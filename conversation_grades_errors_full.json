@@ -1,0 +1,32 @@
+[
+  {
+    "phone_number": "9710545407865",
+    "grade_date": "2026-01-15",
+    "prompt": "ai_performance",
+    "error": "ai_performance failed after 3 attempts: ai_performance response missing required field 'completeness_reasoning'."
+  },
+  {
+    "phone_number": "9710525050765",
+    "grade_date": "2025-10-14",
+    "prompt": "ai_performance",
+    "error": "ai_performance failed after 3 attempts: ai_performance response missing required field 'completeness_score'."
+  },
+  {
+    "phone_number": "971502220075",
+    "grade_date": "2026-01-10",
+    "prompt": "ai_performance",
+    "error": "ai_performance failed after 3 attempts: ai_performance response missing required field 'completeness_reasoning'."
+  },
+  {
+    "phone_number": "971509162341",
+    "grade_date": "2025-11-02",
+    "prompt": "ai_performance",
+    "error": "ai_performance failed after 3 attempts: relevancy_score must be numeric 1..10, got NoneType."
+  },
+  {
+    "phone_number": "971557512057",
+    "grade_date": "2025-11-25",
+    "prompt": "ai_performance",
+    "error": "ai_performance failed after 3 attempts: ai_performance response missing required field 'completeness_reasoning'."
+  }
+]
