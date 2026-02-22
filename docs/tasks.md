@@ -5,14 +5,14 @@ Status: `IN PROGRESS`
 Last Updated: `2026-02-21`
 
 ## Phase 1 - Gate 1.0 (Foundation)
-- [ ] `P1.1.1 - Design - Audit source schemas and column semantics - Gate (Independent)` [IN REVIEW]
-- [ ] `P1.1.2 - Design - Define SQLAlchemy 2.0 model contract - Gate (Dependent)` (`P1.1.1`) [IN REVIEW]
-- [ ] `P1.1.3 - Design - Define enum and normalization strategy - Gate (Dependent)` (`P1.1.2`) [IN REVIEW]
-- [ ] `P1.1.4 - DB - Initialize Alembic environment and target metadata - Gate (Dependent)` (`P1.1.2`) [IN REVIEW]
-- [ ] `P1.1.5 - DB - Create baseline migration for current schema - Gate (Dependent)` (`P1.1.4`) [IN REVIEW]
-- [ ] `P1.1.6 - DB - Add extension migration for analytics schema and indexes - Gate (Dependent)` (`P1.1.5`) [IN REVIEW]
-- [ ] `P1.1.7 - Infra - Scaffold FastAPI project structure and dependency set - Gate (Dependent)` (`P1.1.4`) [IN REVIEW]
-- [ ] `P1.1.8 - Config - Implement settings and DB lifecycle hooks - Gate (Dependent)` (`P1.1.7`) [IN REVIEW]
+- [x] `P1.1.1 - Design - Audit source schemas and column semantics - Gate (Independent)`
+- [x] `P1.1.2 - Design - Define SQLAlchemy 2.0 model contract - Gate (Dependent)` (`P1.1.1`)
+- [x] `P1.1.3 - Design - Define enum and normalization strategy - Gate (Dependent)` (`P1.1.2`)
+- [x] `P1.1.4 - DB - Initialize Alembic environment and target metadata - Gate (Dependent)` (`P1.1.2`)
+- [x] `P1.1.5 - DB - Create baseline migration for current schema - Gate (Dependent)` (`P1.1.4`)
+- [x] `P1.1.6 - DB - Add extension migration for analytics schema and indexes - Gate (Dependent)` (`P1.1.5`)
+- [x] `P1.1.7 - Infra - Scaffold FastAPI project structure and dependency set - Gate (Dependent)` (`P1.1.4`)
+- [x] `P1.1.8 - Config - Implement settings and DB lifecycle hooks - Gate (Dependent)` (`P1.1.7`)
 
 ## Phase 2 - Gate 2.0 + Streams (Analytics API)
 ## Gate 2.0
