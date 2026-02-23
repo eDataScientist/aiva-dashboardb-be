@@ -46,29 +46,56 @@ Subtasks (brief):
 - Implement quality and lead-conversion trend endpoints.
 - Add OpenAPI examples for frontend integration.
 
-## Phase 3 - Validation and Handoff
-Objective: Stabilize milestone output for review and continuation.
+## Phase 3 - Async Database Migration
+Objective: Port the synchronous SQLAlchemy `Session` layer to `AsyncSession` with `asyncpg`.
 
 Subtasks (brief):
-- Run compile/lint checks and resolve issues.
-- Verify migration upgrade/downgrade reliability.
-- Execute endpoint smoke tests (happy path + edge cases).
-- Publish runbook and handoff notes.
+- Add `asyncpg` dependency.
+- Rewrite `app/db/database.py` to use `create_async_engine` and `async_sessionmaker`.
+- Update `app/db/deps.py` to yield `AsyncSession`.
+- Convert all service functions to `async def` with `await session.execute(...)`.
+- Update route handlers to `await` service calls.
+- Update `app/main.py` lifespan for async connect/disconnect.
+
+## Phase 4 - ORM Query Rewrite
+Objective: Eliminate raw `text()` SQL in favour of SQLAlchemy ORM expressions.
+
+Subtasks (brief):
+- Rewrite `get_analytics_summary` using ORM `select()`, `func`, and `case()`.
+- Rewrite `get_message_volume_trend` using ORM date bucketing.
+- Rewrite `get_top_intents` using ORM with intent normalization.
+- Rewrite `get_peak_hours` using ORM with Python-side zero-fill.
+- Remove dead raw-SQL helper functions and string constants.
+
+## Phase 5 - Testing Infrastructure
+Objective: Build a comprehensive pytest test suite backed by Docker PostgreSQL.
+
+Subtasks (brief):
+- Add `pytest`, `pytest-asyncio`, `httpx`, `testcontainers[postgres]` dependencies.
+- Create `tests/conftest.py` with Docker PG lifecycle, Alembic migrations, and seed data.
+- Write unit tests for enum normalizers.
+- Write service-level tests for all analytics and conversations functions.
+- Write integration tests for all API endpoints via `httpx.AsyncClient`.
 
 ## Phase Dependencies
-- `Phase 1 -> Phase 2 -> Phase 3`
-- Phase 2 cannot start before Phase 1 completion.
+- `Phase 1 -> Phase 2 -> Phase 3 -> Phase 4 -> Phase 5`
 - Phase 3 cannot start before Phase 2 completion.
+- Phase 4 cannot start before Phase 3 completion.
+- Phase 5 cannot start before Phase 4 completion.
 
 ## Milestone Deliverables
 - FastAPI backend scaffold
 - SQLAlchemy model definitions for current + extended schema
 - Alembic migration setup and initial revisions
 - Analytics API endpoints (MVP set)
-- Validation artifacts and runbook documentation
+- Async database layer (`AsyncSession` + `asyncpg`)
+- Pure ORM query layer (no raw SQL)
+- Pytest test suite with Docker PostgreSQL
 
 ## Success Criteria
 - Service starts and exposes health + analytics routes.
 - Migrations can upgrade and downgrade without errors.
 - Endpoints return expected aggregate structures for date/channel filters.
-- Modified code passes compile and lint checks.
+- All database access is async (`AsyncSession`).
+- No raw `text()` SQL in service layer.
+- Full pytest suite passes against Docker PostgreSQL.
