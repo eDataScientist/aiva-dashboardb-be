@@ -1,3 +1,5 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.db.base import Base, NAMING_CONVENTION, get_target_metadata
 from app.db.database import (
     check_database_connection,
@@ -5,13 +7,16 @@ from app.db.database import (
     configure_database,
     get_session_factory,
 )
+from app.db.deps import get_db
 
 __all__ = [
+    "AsyncSession",
     "Base",
     "NAMING_CONVENTION",
     "check_database_connection",
     "close_database",
     "configure_database",
+    "get_db",
     "get_session_factory",
     "get_target_metadata",
 ]

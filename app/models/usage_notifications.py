@@ -21,4 +21,3 @@ class UsageNotification(Base):
         nullable=False,
         server_default=func.now(),
     )
-

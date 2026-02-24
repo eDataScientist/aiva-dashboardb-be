@@ -1,18 +1,21 @@
 import os
 import pytest
 import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from testcontainers.postgres import PostgresContainer
 
 # Disable Ryuk Reaper to avoid port 8080 binding issues on Windows
-os.environ["TESTCONTAINERS_RYUK_DISABLED"] = "true"
+os.environ.setdefault("TESTCONTAINERS_RYUK_DISABLED", "true")
 
 # Set dummy DATABASE_URL so that app.main import and get_settings() doesn't fail
-os.environ["DATABASE_URL"] = "postgresql://dummy:dummy@localhost:5432/dummy"
+os.environ.setdefault("DATABASE_URL", "postgresql://dummy:dummy@localhost:5432/dummy")
 
 from app.db import database
 from app.db.deps import get_db
 from app.main import app
+from app.models.chats import ChatMessage
 
 @pytest.fixture(scope="session")
 def postgres_container():
@@ -21,8 +24,8 @@ def postgres_container():
         yield postgres
 
 @pytest.fixture(scope="session")
-def engine_setup(postgres_container):
-    """Run Alembic migrations on the ephemeral DB and configure the async engine."""
+def migrated_db_url(postgres_container):
+    """Run Alembic migrations once on the ephemeral DB and return the DB URL."""
     # Get the synchronous URL for Alembic
     db_url = postgres_container.get_connection_url()
     
@@ -36,11 +39,35 @@ def engine_setup(postgres_container):
     alembic_cfg.set_main_option("sqlalchemy.url", db_url)
     alembic.command.upgrade(alembic_cfg, "head")
     
-    # Configure the global application database using the async driver
-    # configure_database swaps postgresql:// to postgresql+asyncpg://
-    database.configure_database(db_url)
-    
     yield db_url
+
+
+@pytest_asyncio.fixture()
+async def engine_setup(migrated_db_url):
+    """Configure the async engine for the current test and ensure chat table exists."""
+    database.configure_database(migrated_db_url)
+    
+    # Force NullPool for tests
+    from sqlalchemy.pool import NullPool
+    from sqlalchemy.ext.asyncio import create_async_engine
+    async_url = migrated_db_url.replace("postgresql+psycopg2://", "postgresql+asyncpg://", 1).replace("postgresql://", "postgresql+asyncpg://", 1)
+    database._engine = create_async_engine(async_url, poolclass=NullPool)
+    database._session_factory.configure(bind=database._engine)
+
+    if database._engine is None:
+        raise RuntimeError("Engine was not configured in test setup")
+
+    async with database._engine.begin() as conn:
+        await conn.run_sync(
+            lambda sync_conn: ChatMessage.__table__.create(
+                bind=sync_conn, checkfirst=True
+            )
+        )
+
+    try:
+        yield migrated_db_url
+    finally:
+        await database.close_database()
 
 @pytest_asyncio.fixture()
 async def db_session(engine_setup):
@@ -59,27 +86,37 @@ async def db_session(engine_setup):
         await conn.begin_nested()
 
         session_factory = async_sessionmaker(
-            bind=conn, 
-            expire_on_commit=False, 
+            bind=conn,
+            expire_on_commit=False,
             class_=AsyncSession,
-            autoflush=False
+            autoflush=False,
         )
         session = session_factory()
 
-        @pytest_asyncio.fixture(autouse=True)
-        async def automatic_savepoint_rollback():
-            # Rollback to the savepoint if a nested transaction was committed or rolled back
-            if not conn.in_nested_transaction():
-                await conn.begin_nested()
-                
-        yield session
+        @event.listens_for(session.sync_session, "after_transaction_end")
+        def restart_nested_transaction(_, __):
+            # Recreate the savepoint after a test-level commit/rollback.
+            if (
+                conn.sync_connection is not None
+                and conn.sync_connection.in_transaction()
+                and not conn.sync_connection.in_nested_transaction()
+            ):
+                conn.sync_connection.begin_nested()
 
-        # Close session and rollback the top-level transaction
-        await session.close()
-        await conn.rollback()
+        try:
+            yield session
+        finally:
+            event.remove(
+                session.sync_session,
+                "after_transaction_end",
+                restart_nested_transaction,
+            )
+            await session.close()
+            if conn.in_transaction():
+                await conn.rollback()
 
-@pytest.fixture()
-def client(db_session):
+@pytest_asyncio.fixture()
+async def client(db_session):
     """
     Provides an AsyncClient connected to the FastAPI app, 
     with the db dependency overridden to use the function-scoped test session.
@@ -89,12 +126,9 @@ def client(db_session):
     
     app.dependency_overrides[get_db] = override_get_db
     
-    from httpx import AsyncClient, ASGITransport
     transport = ASGITransport(app=app)
-    # We yield the class instantiaton so they can use it as a context manager manually if they want to
-    # but normally this fixture would just return the instance or yield it
-    # Here, we'll return an initialized AsyncClient
-    client = AsyncClient(transport=transport, base_url="http://test")
-    yield client
-    
-    app.dependency_overrides.clear()
+    try:
+        async with AsyncClient(transport=transport, base_url="http://test") as async_client:
+            yield async_client
+    finally:
+        app.dependency_overrides.clear()

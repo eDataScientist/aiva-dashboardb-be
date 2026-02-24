@@ -132,4 +132,3 @@ def normalize_escalation_type(raw_value: Any) -> EscalationType | None:
     if token is None:
         return None
     return _ESCALATION_TYPE_ALIASES.get(token)
-

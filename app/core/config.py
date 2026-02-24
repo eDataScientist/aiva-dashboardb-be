@@ -50,4 +50,3 @@ def get_settings() -> Settings:
         raise RuntimeError(
             "Invalid application settings. Ensure DATABASE_URL is set."
         ) from exc
-

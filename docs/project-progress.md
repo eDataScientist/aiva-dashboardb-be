@@ -3,7 +3,7 @@
 ## Project
 - Name: `aiva-dashboard-be`
 - Current Milestone: `Milestone 1 - FastAPI Analytics Backend Foundation`
-- Current Phase: `Phase 2 Complete - Ready for Phase 3 Async Migration`
+- Current Phase: `Phase 5 Complete - Testing Infrastructure Complete (Milestone 1 Complete)`
 
 ## Current Status
 - Milestone SRS overview finalized: `docs/milestone-1.md`
@@ -35,19 +35,44 @@
 - Gate 1.0 implementation executed end-to-end:
   - `P1.1.1` through `P1.1.8` implemented
   - All Gate 1.0 tasks moved to `DONE` on Kanban
+- Phase 3 (Async Database Migration) **DONE**:
+  - `P1.3.1` through `P1.3.10` implemented
+  - Entire DB layer ported from sync `Session` to `AsyncSession` + `asyncpg`
+  - `python -m compileall app/` passes — zero errors across 22 files
+  - All Phase 3 Kanban tasks (`EDA-19` through `EDA-28`) moved to `DONE` after clean QA and linting.
+- Phase 4 (ORM Query Rewrite) **DONE**:
+  - `P1.4.1` through `P1.4.6` completed
+  - Raw SQL analytics queries were replaced with ORM expressions
+  - Spot-check parity task `P1.4.6` completed
+- Phase 5 Gate 5.0 (Test Environment Foundation) **DONE**:
+  - `P1.5.1` through `P1.5.5` completed and moved to `DONE`
+  - Added pytest/testcontainers foundation (`pytest.ini`, `tests/conftest.py`, `tests/test_health.py`, `tests/test_enums.py`)
+- Phase 5 Stream A (Analytics Tests) **DONE**:
+  - `P1.5.A.1` through `P1.5.A.4` completed and moved to `DONE`
+  - Added analytics service and route test suites:
+    - `tests/test_analytics_service.py`
+    - `tests/test_analytics_routes.py`
+  - Stream A validation passed:
+    - `pytest tests/test_analytics_service.py tests/test_analytics_routes.py -q` -> `8 passed`
+  - Bugs fixed during Stream A implementation:
+    - `app/services/analytics.py`: empty-summary AI score and quality-trend runtime bug
+    - `app/main.py`: JSON-safe 422 handler for Pydantic dependency validation errors
+    - `tests/conftest.py`: async fixture lifecycle and ephemeral DB schema setup fixes
+- Phase 5 Stream B (Conversations Tests) **DONE**:
+  - `P1.5.B.1` through `P1.5.B.4` marked `DONE` on Kanban and verified
+  - Stream B validation passed:
+    - `pytest tests/test_conversations_service.py tests/test_conversations_api.py -q` -> `10 passed`
+- Phase 5 Gate 5.5 (QA Verification) **DONE**:
+  - Full test suite verification passed:
+    - `pytest -q` -> `24 passed`
 - FastAPI scaffold, SQLAlchemy model contract, settings/DB lifecycle wiring, and Alembic revisions are in place.
 - Migration safety requirement addressed:
   - Baseline migration is non-destructive/stamp-only.
   - Extension migration is additive-only and creates `conversation_grades` without altering legacy tables.
 
 ## Next Recommended Action
-- Enter **Phase 3 - Async Database Migration**:
-  - Port `Session` → `AsyncSession` with `asyncpg`
-  - Convert all service/route functions to async
-- Then **Phase 4 - ORM Query Rewrite**:
-  - Rewrite 4 raw `text()` SQL analytics functions to ORM expressions
-- Then **Phase 5 - Testing Infrastructure**:
-  - pytest + Docker PostgreSQL with testcontainers
+- **Milestone 1 is complete.**
+- Define the next milestone / phase scope and create the next task plan (do not create Kanban tasks unless requested).
 
 ## Notes
 - Kanban MCP is reachable and synchronized with current execution state.
@@ -69,3 +94,5 @@
 - Critical bug fixed during Stream A review:
   - Pydantic field name `date` was clashing with `datetime.date` type annotation
   - Fixed by using `Optional[datetime.date]` syntax instead of union operator
+- Phase 5 testing runtime note:
+  - Docker/testcontainers tests may require elevated execution outside sandboxed runs.

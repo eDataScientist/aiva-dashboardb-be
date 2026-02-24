@@ -125,7 +125,6 @@ async def compute_quality_trend(
         select(daily_metrics).where(daily_metrics.c.total_customers > 0)
     )
 
-    from datetime import timedelta
     points_dict = {row.date: row for row in result}
     points: list[DateValuePoint] = []
     
@@ -209,7 +208,6 @@ async def compute_lead_conversion_trend(
         select(daily_metrics).where(daily_metrics.c.total_customers > 0)
     )
 
-    from datetime import timedelta
     points_dict = {row.date: row for row in result}
     points: list[LeadConversionTrendPoint] = []
     
@@ -327,7 +325,7 @@ async def get_analytics_summary(
         if total_customers
         else 0.0
     )
-    resolution_rate = 100.0 - escalation_rate
+    resolution_rate = (100.0 - escalation_rate) if total_customers else 0.0
     avg_engagement = (
         (total_messages / total_customers) if total_customers else 0.0
     )
