@@ -79,7 +79,7 @@ Last Updated: `2026-03-02` (Post-completion Stream A review: `P1.2.2` approved; 
 
 ## Milestone 2: AI Grading, Monitoring, and Access Foundations
 Status: `IN PROGRESS`  
-Last Updated: `2026-03-04` (Stream D review completed: `P2.1.14` and `P2.1.15` moved to `DONE`; Phase 1 complete)
+Last Updated: `2026-03-05` (Stream D review completed; `P2.2.16` and `P2.2.17` moved to `DONE`)
 
 ## Phase 1 - Gate 1.0 (Shared Milestone 2 Data Contracts)
 - [x] `P2.1.1 - Design - Finalize customer-day grade grain and canonical identity contract - Gate (Independent)`
@@ -105,3 +105,30 @@ Last Updated: `2026-03-04` (Stream D review completed: `P2.1.14` and `P2.1.15` m
 ## Stream D (Shared Contracts and Phase Validation)
 - [x] `P2.1.14 - API - Define shared schema/constants contracts for downstream Milestone 2 phases - Stream D (Dependent)` (`P2.1.2`, `P2.1.3`, `P2.1.4`) - `DONE`
 - [x] `P2.1.15 - QA - Run compile and migration smoke checks for Phase 1 changes - Stream D (Dependent)` (`P2.1.7`, `P2.1.9`, `P2.1.13`, `P2.1.14`) - `DONE`
+
+## Phase 2 - Gate 2.0 (Auth Core Contract and Security Primitives)
+- [x] `P2.2.1 - Design - Finalize auth transport, token claims, and route access matrix - Gate (Independent)` - `DONE`
+- [x] `P2.2.2 - DB - Validate account schema readiness and add additive migration if gaps exist - Gate (Dependent)` (`P2.2.1`) - `DONE` (no additive migration required)
+- [x] `P2.2.3 - Config - Add auth settings contract and validation rules - Gate (Dependent)` (`P2.2.1`) - `DONE`
+- [x] `P2.2.4 - API - Define auth and account profile schemas plus auth error payloads - Gate (Dependent)` (`P2.2.1`) - `DONE`
+- [x] `P2.2.5 - Service - Implement password hashing/token utilities and current-account dependency primitives - Gate (Dependent)` (`P2.2.2`, `P2.2.3`, `P2.2.4`) - `DONE`
+
+## Stream A (Authentication Endpoints)
+- [x] `P2.2.6 - Service - Implement account authentication flow with active-account checks - Stream A (Dependent)` (`P2.2.5`) - `DONE`
+- [x] `P2.2.7 - API - Add login endpoint issuing access tokens and account context - Stream A (Dependent)` (`P2.2.6`) - `DONE`
+- [x] `P2.2.8 - API - Add authenticated identity endpoint for current account context - Stream A (Dependent)` (`P2.2.7`) - `DONE`
+- [x] `P2.2.9 - Test - Add auth service and route tests for success and failure paths - Stream A (Dependent)` (`P2.2.8`) - `DONE` (compile passed; `pytest tests/test_auth_service.py tests/test_auth_api.py -q` passed outside sandbox)
+
+## Stream B (Account Profile Endpoints)
+- [x] `P2.2.10 - Service - Implement authenticated profile read/update service - Stream B (Dependent)` (`P2.2.5`) - `DONE`
+- [x] `P2.2.11 - API - Add account profile endpoints (GET/PATCH /api/v1/accounts/me) - Stream B (Dependent)` (`P2.2.10`) - `DONE`
+- [x] `P2.2.12 - Test - Add profile API tests for validation and permissions - Stream B (Dependent)` (`P2.2.11`) - `DONE` (covered by targeted auth/profile/guard verification suite: `30 passed` outside sandbox)
+
+## Stream C (Protected Routing and Access Baseline)
+- [x] `P2.2.13 - Design - Finalize baseline role guard policy for Milestone 2 routes - Stream C (Independent)` (`P2.2.1`) - `DONE` (policy documented in m2-phase-2.md)
+- [x] `P2.2.14 - API - Apply auth guards to protected route groups and register auth router - Stream C (Dependent)` (`P2.2.5`, `P2.2.13`) - `DONE` (analytics + conversations routes guarded)
+- [x] `P2.2.15 - Test - Add authorization tests for protected route behavior - Stream C (Dependent)` (`P2.2.14`) - `DONE` (tests/test_authz_guards.py created; compile passed; `pytest tests/test_authz_guards.py -q` passed outside sandbox)
+
+## Stream D (Phase Validation and Handoff)
+- [x] `P2.2.16 - QA - Run compile and targeted pytest verification for Phase 2 auth scope - Stream D (Dependent)` (`P2.2.9`, `P2.2.12`, `P2.2.15`) - `DONE` (compile passed; targeted auth/profile/guard suites passed outside sandbox: `30 passed`)
+- [x] `P2.2.17 - Docs - Update task/progress docs with Phase 2 execution notes and residual risks - Stream D (Dependent)` (`P2.2.16`) - `DONE` (tasks/progress/phase docs synchronized with Stream D execution outcomes)

@@ -3,9 +3,67 @@
 ## Project
 - Name: `aiva-dashboard-be`
 - Current Milestone: `Milestone 2 - AI Grading, Monitoring, and Access Foundations`
-- Current Phase: `Milestone 2 Phase 2 - Auth and Accounts Foundation (ready to start; Phase 1 complete)`
+- Current Phase: `Milestone 2 Phase 2 - Auth and Accounts Foundation (complete; Gate 2.0 + Streams A/B/C/D done)`
 
 ## Current Status
+- Milestone 2 Phase 2 detailed plan created: `docs/milestone-2/m2-phase-2.md` (Gate 2.0 + Streams A-D with atomic task contracts).
+- Milestone 2 Phase 2 Gate 2.0 execution started (`2026-03-05`):
+  - `P2.2.1` (`EDA-64`) completed, reviewed, and moved to `DONE`:
+    - finalized JWT bearer transport contract
+    - finalized required token claims
+    - finalized route access matrix (public vs authenticated surfaces)
+  - `P2.2.2` (`EDA-65`) completed and moved to `DONE`:
+    - `accounts` schema readiness validated against Phase 2 auth/profile scope
+    - no additive migration required
+  - `P2.2.3` (`EDA-66`) completed, reviewed, and moved to `DONE`:
+    - auth settings contract added to `app/core/config.py`
+    - `.env.example` and test bootstrap env defaults updated
+  - `P2.2.4` (`EDA-67`) completed, reviewed, and moved to `DONE`:
+    - new auth/account schema modules added (`app/schemas/auth.py`, `app/schemas/accounts.py`)
+    - schema validation tests added (`tests/test_auth_schemas.py`)
+  - `P2.2.5` (`EDA-68`) completed, reviewed, and moved to `DONE`:
+    - security primitives added (`app/core/security.py`)
+    - auth dependency primitives added (`app/api/deps/auth.py`)
+    - utility tests added (`tests/test_security.py`)
+    - validation passed: `python -m compileall app/` and `pytest tests/test_auth_schemas.py tests/test_security.py -q` (`10 passed`)
+- Milestone 2 Phase 2 Stream A review completed (`2026-03-05`) and tasks moved to `DONE` (`P2.2.6`-`P2.2.9`):
+  - added authentication service flow with active-account checks and `last_login_at` updates (`app/services/auth.py`)
+  - added auth routes (`POST /api/v1/auth/login`, `GET /api/v1/auth/me`) and router registration (`app/api/routes/auth.py`, `app/api/router.py`)
+  - added Stream A tests (`tests/test_auth_service.py`, `tests/test_auth_api.py`)
+  - validation status:
+    - `python -m compileall app tests` passed
+    - `pytest tests/test_auth_service.py tests/test_auth_api.py -q` passed outside sandbox
+- Milestone 2 Phase 2 Stream B review completed (`2026-03-05`) and tasks moved to `DONE` (`P2.2.10`-`P2.2.12`):
+  - account profile service + endpoints implemented (`app/services/accounts.py`, `app/api/routes/accounts.py`)
+  - profile API test module present (`tests/test_accounts_api.py`)
+- Milestone 2 Phase 2 Kanban sync corrected (`2026-03-05`):
+  - created missing issues for `P2.2.6` through `P2.2.12`, `P2.2.16`, and `P2.2.17`
+  - reconciled duplicate creations against pre-existing `P2.2.13`-`P2.2.15` items and kept canonical issues
+  - Stream A Kanban tasks (`EDA-70`-`EDA-73`) reviewed and moved to `Done` with appended review notes
+- Milestone 2 Phase 2 Stream C review completed (`2026-03-05`) and tasks moved to `DONE` (`P2.2.13`-`P2.2.15`):
+  - baseline role guard policy confirmed in `docs/milestone-2/m2-phase-2.md`
+  - protected-route guard wiring confirmed on analytics + conversations route groups
+  - authorization test module present (`tests/test_authz_guards.py`)
+  - validation status:
+    - `python -m compileall app tests` passed
+    - `pytest tests/test_authz_guards.py -q` passed outside sandbox
+- Milestone 2 Phase 2 Stream D execution completed (`2026-03-05`) and tasks moved to `IN REVIEW` (`P2.2.16`-`P2.2.17`):
+  - compile verification passed: `python -m compileall app tests`
+  - targeted auth/profile/guard validation passed outside sandbox:
+    - `pytest tests/test_auth_service.py tests/test_auth_api.py tests/test_accounts_api.py tests/test_authz_guards.py -q` -> `30 passed`
+  - docs synchronized for Stream D handoff:
+    - `docs/tasks.md`
+    - `docs/project-progress.md`
+    - `docs/milestone-2/m2-phase-2.md`
+- Milestone 2 Phase 2 Stream D review completed (`2026-03-05`) and tasks moved to `DONE`:
+  - `P2.2.16` (`EDA-82`) approved and moved to `DONE`
+  - `P2.2.17` (`EDA-83`) approved and moved to `DONE`
+- Outside-sandbox auth verification rerun completed (`2026-03-05`):
+  - `pytest tests/test_auth_service.py tests/test_auth_api.py tests/test_authz_guards.py -q` -> `20 passed`
+  - prior Docker/testcontainers permission blocker was sandbox-related and is resolved when run unrestricted.
+- Milestone 2 Phase 2 planning clarifications resolved (`2026-03-05`):
+  - Role restrictions beyond baseline authentication on existing `analytics`/`conversations` routes are deferred to later phases.
+  - First-admin onboarding/bootstrap flow is out of scope for Phase 2 (operational provisioning only).
 - Milestone 1 SRS overview finalized: `docs/milestone-1/milestone-1.md`
 - Detailed Phase 1 execution plan created: `docs/milestone-1/m1-phase-1.md`
 - Detailed Phase 2 execution plan created: `docs/milestone-1/m1-phase-2.md`
@@ -122,7 +180,7 @@
       - pre/post source table counts unchanged (`Arabia Insurance Chats=9090`, `usage_notifications=0`)
 
 ## Next Recommended Action
-- Start Milestone 2 Phase 2 execution (`Auth and Accounts Foundation`) from Gate 2.0 tasks.
+- Start planning/execution for the next Milestone 2 phase now that Phase 2 auth/accounts foundation is complete.
 
 ## Notes
 - Kanban MCP is reachable and synchronized with current execution state.
@@ -147,3 +205,5 @@
   - Fixed by using `Optional[datetime.date]` syntax instead of union operator
 - Phase 5 testing runtime note:
   - Docker/testcontainers tests may require elevated execution outside sandboxed runs.
+- Stream D validation runtime note:
+  - sandboxed targeted pytest run failed with Docker npipe permission error (`CreateFile Access is denied`), while unrestricted run passed (`30 passed`).
