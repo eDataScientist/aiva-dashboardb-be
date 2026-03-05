@@ -418,6 +418,6 @@ Gate 2.0 (P1.2.1 Shared Analytics + Conversation Schemas) -----+
 
 ## Done Condition for Phase 2 Planning
 Phase 2 planning is ready when:
-- A dedicated phase plan document exists (`docs/m1-phase-2.md`)
+- A dedicated phase plan document exists (`docs/milestone-1/m1-phase-2.md`)
 - Gate/stream tasks align with `docs/tasks.md`
 - Dependencies and open questions are explicit enough to start `P1.2.1`

@@ -8,7 +8,7 @@ Milestone 1 establishes the backend foundation for analytics by introducing:
 - Alembic migration workflow
 - Initial analytics endpoints
 
-This document is intentionally high-level. Detailed execution is split into phase documents (starting with `docs/m1-phase-1.md`).
+This document is intentionally high-level. Detailed execution is split into phase documents (starting with `docs/milestone-1/m1-phase-1.md`).
 
 ## Goals
 - Create a runnable FastAPI backend with versioned API routes.
@@ -34,7 +34,7 @@ Subtasks (brief):
 - Scaffold FastAPI project structure and dependency wiring.
 - Add environment configuration and DB lifecycle hooks.
 
-Detailed plan: `docs/m1-phase-1.md`
+Detailed plan: `docs/milestone-1/m1-phase-1.md`
 
 ## Phase 2 - Analytics API MVP
 Objective: Deliver initial analytics endpoints for summary and trends.

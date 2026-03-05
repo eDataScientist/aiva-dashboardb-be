@@ -3,11 +3,26 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, SmallInteger, String, Text, UniqueConstraint, Uuid, func
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    SmallInteger,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, validates
 
 from app.db.base import Base
-from app.models.enums import EscalationType, normalize_escalation_type
+from app.models.enums import (
+    EscalationType,
+    IdentityType,
+    normalize_escalation_type,
+    normalize_identity_type,
+)
 
 
 class ConversationGrade(Base):
@@ -28,6 +43,15 @@ class ConversationGrade(Base):
         nullable=False,
         server_default=func.now(),
     )
+
+    identity_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    conversation_identity: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+
+    intent_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    intent_label: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    intent_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     relevancy_score: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     relevancy_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -55,19 +79,26 @@ class ConversationGrade(Base):
     user_relevancy_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     escalation_occurred: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-    escalation_occurred_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Keep as string in the initial model contract, then enforce enum in P1.1.3/P1.1.6.
+    escalation_occurred_reasoning: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
     escalation_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
     escalation_type_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-    intent_label: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    intent_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     @validates("escalation_type")
     def _validate_escalation_type(self, _key: str, value: str | None) -> str | None:
         normalized = normalize_escalation_type(value)
         return None if normalized is None else normalized.value
 
+    @validates("identity_type")
+    def _validate_identity_type(self, _key: str, value: str | None) -> str | None:
+        normalized = normalize_identity_type(value)
+        return None if normalized is None else normalized.value
+
     @property
     def escalation_type_enum(self) -> EscalationType | None:
         return normalize_escalation_type(self.escalation_type)
+
+    @property
+    def identity_type_enum(self) -> IdentityType | None:
+        return normalize_identity_type(self.identity_type)

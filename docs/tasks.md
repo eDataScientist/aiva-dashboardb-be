@@ -1,8 +1,8 @@
 # Tasks Checklist
 
 ## Milestone 1: FastAPI Analytics Backend Foundation
-Status: `DONE`  
-Last Updated: `2026-02-24` (Phase 5 complete: Stream B and Gate 5.5 verified; full pytest suite passing)
+Status: `IN REVIEW`  
+Last Updated: `2026-03-02` (Post-completion Stream A review: `P1.2.2` approved; `P1.2.3` kept in review for no-data contract mismatch)
 
 ## Phase 1 - Gate 1.0 (Foundation)
 - [x] `P1.1.1 - Design - Audit source schemas and column semantics - Gate (Independent)`
@@ -19,8 +19,8 @@ Last Updated: `2026-02-24` (Phase 5 complete: Stream B and Gate 5.5 verified; fu
 - [x] `P1.2.1 - API - Define analytics and conversations request/response schemas - Gate (Dependent)` (`P1.1.8`)
 
 ## Stream A
-- [x] `P1.2.2 - API - Implement summary endpoint aggregates - Stream A (Dependent)` (`P1.2.1`)
-- [x] `P1.2.3 - API - Implement message volume trend endpoint - Stream A (Dependent)` (`P1.2.1`)
+- [x] `P1.2.2 - API - Implement summary endpoint aggregates - Stream A (Dependent)` (`P1.2.1`) - `DONE`
+- [ ] `P1.2.3 - API - Implement message volume trend endpoint - Stream A (Dependent)` (`P1.2.1`) - `IN REVIEW` (contract mismatch: no-data behavior)
 
 ## Stream B
 - [x] `P1.2.4 - API - Implement top intents endpoint - Stream B (Dependent)` (`P1.2.1`)
@@ -76,3 +76,32 @@ Last Updated: `2026-02-24` (Phase 5 complete: Stream B and Gate 5.5 verified; fu
 
 ## Gate 5.5 - QA Verification
 - [x] `P1.5.C.1 - QA - Run full pytest suite and verify all tests pass - QA (Dependent)` (`Stream A`, `Stream B`)
+
+## Milestone 2: AI Grading, Monitoring, and Access Foundations
+Status: `IN PROGRESS`  
+Last Updated: `2026-03-04` (Stream D review completed: `P2.1.14` and `P2.1.15` moved to `DONE`; Phase 1 complete)
+
+## Phase 1 - Gate 1.0 (Shared Milestone 2 Data Contracts)
+- [x] `P2.1.1 - Design - Finalize customer-day grade grain and canonical identity contract - Gate (Independent)`
+- [x] `P2.1.2 - Design - Finalize intent taxonomy codes/labels map for Milestone 2 - Gate (Dependent)` (`P2.1.1`)
+- [x] `P2.1.3 - Design - Define configurable highlight-rules data contract and compute-on-read policy - Gate (Dependent)` (`P2.1.1`)
+- [x] `P2.1.4 - Design - Define auth account/profile schema contract and security constraints - Gate (Dependent)` (`P2.1.1`)
+
+## Stream A (`conversation_grades` Contract + ORM Updates)
+- [x] `P2.1.5 - DB - Update conversation_grades ORM model for Milestone 2 fields - Stream A (Dependent)` (`P2.1.4`) - `DONE`
+- [x] `P2.1.6 - DB - Add Alembic migration for conversation_grades Milestone 2 contract changes - Stream A (Dependent)` (`P2.1.5`) - `DONE`
+- [x] `P2.1.7 - QA - Validate conversation_grades migration upgrade/downgrade behavior - Stream A (Dependent)` (`P2.1.6`) - `DONE`
+
+## Stream B (Highlight Rules Configuration Schema)
+- [x] `P2.1.8 - DB - Add highlight rules configuration ORM model - Stream B (Dependent)` (`P2.1.3`)
+- [x] `P2.1.9 - DB - Add Alembic migration and default seed strategy for highlight rules config - Stream B (Dependent)` (`P2.1.8`)
+- [x] `P2.1.10 - Design - Define shared highlight codes and response-facing labels contract - Stream B (Dependent)` (`P2.1.3`)
+
+## Stream C (Auth and Account Data Model + Migration)
+- [x] `P2.1.11 - DB - Add account ORM model (auth + minimal profile columns) - Stream C (Dependent)` (`P2.1.4`) - `DONE`
+- [x] `P2.1.12 - DB - Add Alembic migration for account table and role constraints/indexes - Stream C (Dependent)` (`P2.1.11`) - `DONE`
+- [x] `P2.1.13 - QA - Validate account migration constraints and uniqueness rules - Stream C (Dependent)` (`P2.1.12`) - `DONE`
+
+## Stream D (Shared Contracts and Phase Validation)
+- [x] `P2.1.14 - API - Define shared schema/constants contracts for downstream Milestone 2 phases - Stream D (Dependent)` (`P2.1.2`, `P2.1.3`, `P2.1.4`) - `DONE`
+- [x] `P2.1.15 - QA - Run compile and migration smoke checks for Phase 1 changes - Stream D (Dependent)` (`P2.1.7`, `P2.1.9`, `P2.1.13`, `P2.1.14`) - `DONE`

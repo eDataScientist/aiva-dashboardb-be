@@ -2,24 +2,47 @@
 
 ## Project
 - Name: `aiva-dashboard-be`
-- Current Milestone: `Milestone 1 - FastAPI Analytics Backend Foundation`
-- Current Phase: `Phase 5 Complete - Testing Infrastructure Complete (Milestone 1 Complete)`
+- Current Milestone: `Milestone 2 - AI Grading, Monitoring, and Access Foundations`
+- Current Phase: `Milestone 2 Phase 2 - Auth and Accounts Foundation (ready to start; Phase 1 complete)`
 
 ## Current Status
-- Milestone SRS overview finalized: `docs/milestone-1.md`
-- Detailed Phase 1 execution plan created: `docs/m1-phase-1.md`
-- Detailed Phase 2 execution plan created: `docs/m1-phase-2.md`
+- Milestone 1 SRS overview finalized: `docs/milestone-1/milestone-1.md`
+- Detailed Phase 1 execution plan created: `docs/milestone-1/m1-phase-1.md`
+- Detailed Phase 2 execution plan created: `docs/milestone-1/m1-phase-2.md`
+- Milestone 2 SRS overview drafted: `docs/milestone-2/milestone-2.md`
+- Milestone planning decisions captured: `docs/milestone-2/milestone-notes.md`
 - Canonical task checklist updated with phase-level dependencies: `docs/tasks.md`
+- Milestone 2 Phase 1 Kanban tasks created: `P2.1.1` through `P2.1.15` (`EDA-49` through `EDA-63`).
+- Gate 1.0 execution (`carry out gate`) completed:
+  - `P2.1.2` (`EDA-50`) finalized intent taxonomy/code-label normalization contract.
+  - `P2.1.3` (`EDA-51`) finalized DB-backed highlight config + compute-on-read policy contract.
+  - `P2.1.4` (`EDA-52`) finalized auth/account schema and security constraint contract.
+- Gate 1.0 review (`review gate`) completed:
+  - `P2.1.2` (`EDA-50`) reviewed and moved to `DONE`.
+  - `P2.1.3` (`EDA-51`) reviewed and moved to `DONE`.
+  - `P2.1.4` (`EDA-52`) reviewed and moved to `DONE`.
+- Stream B (`P2.1.8` - `P2.1.10`) reviewed and moved to `DONE`:
+  - `P2.1.8` (`EDA-56`): `monitoring_highlight_config` ORM model with threshold constraints and singleton-active index contract.
+  - `P2.1.9` (`EDA-57`): migration `92a4f0787d6d` for highlight config table plus default active seed strategy.
+  - `P2.1.10` (`EDA-58`): shared highlight code/label constants and documented response-facing contract in Milestone 2 Phase 1 plan.
+- Milestone 2 Phase 1 Stream A review (`review stream A`) executed:
+  - `P2.1.5` (`EDA-53`) reviewed and moved to `DONE`
+  - `P2.1.6` (`EDA-54`) reviewed and moved to `DONE`
+  - `P2.1.7` (`EDA-55`) reviewed and moved to `DONE` after baseline verification on forwarded Postgres (`localhost:5433`):
+    - compile + metadata checks passed
+    - required migration sequence passed (`upgrade 47d5aa21b5f1 -> downgrade 8c17673a6641 -> upgrade 47d5aa21b5f1`)
+    - raw/source table counts remained unchanged (`Arabia Insurance Chats=9032`, `usage_notifications=0`)
 - Phase 2 Kanban tasks (`P1.2.1` through `P1.2.10`) created with detailed acceptance criteria, dependencies, file targets, and validation requirements.
 - Gate 2.0 task `P1.2.1` reviewed and marked `DONE`:
   - All 6 acceptance criteria passed
   - Shared analytics and conversations request/response schemas (`app/schemas/*`) finalized
   - Analytics + conversations route skeletons registered in the API router
-- Stream A (`P1.2.2`, `P1.2.3`) **DONE**:
-  - Summary endpoint with KPI aggregates (total messages, customers, escalation rates, AI quality score)
-  - Message volume trend endpoint with daily counts in GST timezone
-  - Bug fix: Resolved Pydantic field/type clash in schemas (`date` field vs `datetime.date` type)
-  - Review document: `docs/review-stream-a.md`
+- Stream A post-completion review (`2026-03-02`) executed:
+  - `P1.2.2` (`EDA-10`) reviewed and moved to `DONE`
+  - `P1.2.3` (`EDA-11`) remains `IN REVIEW` due acceptance-contract mismatch on no-data response behavior (`empty list` expected vs current `zero-filled date range`)
+  - Validation run during review:
+    - `python -m compileall app/` passed
+    - `pytest tests/test_analytics_service.py tests/test_analytics_routes.py -q` blocked in environment (Docker/testcontainers unavailable)
 - Stream B (`P1.2.4`, `P1.2.5`) implemented:
   - Top intents endpoint with Unknown bucket for null/blank intents
   - Peak hours endpoint with zero-filled 0-23 hour buckets
@@ -70,12 +93,40 @@
   - Baseline migration is non-destructive/stamp-only.
   - Extension migration is additive-only and creates `conversation_grades` without altering legacy tables.
 
+- Milestone 2 Phase 1 Stream C remediation + review completed:
+  - `P2.1.11` (`EDA-59`) reviewed and moved to `DONE`:
+    - `app/models/account.py` ORM model present and metadata loads cleanly
+    - `app/models/enums.py` contains `AccountRole` enum and normalizer
+  - `P2.1.12` (`EDA-60`) implemented and reviewed to `DONE`:
+    - added migration `alembic/versions/c3a1f82d9b55_add_accounts_table.py`
+    - migration creates `accounts` table with role constraint, case-insensitive unique index on `lower(email)`, and `role`/`is_active` indexes
+  - `P2.1.13` (`EDA-61`) validated and moved to `DONE` on forwarded Postgres (`localhost:5433`):
+    - migration sequence passed (`upgrade c3a1f82d9b55 -> downgrade 92a4f0787d6d -> upgrade c3a1f82d9b55`)
+    - valid role inserts succeeded (`super_admin`, `company_admin`, `analyst`)
+    - invalid role rejected
+    - case-insensitive duplicate email rejected
+    - source table counts unchanged (`Arabia Insurance Chats=9032`, `usage_notifications=0`)
+
+- Milestone 2 Phase 1 Stream D review completed:
+  - `P2.1.14` (`EDA-62`) reviewed and moved to `DONE`:
+    - Verified shared import contract from `app.core` for intent/highlight constants
+    - Confirmed canonical intent taxonomy completeness (`16` codes) and label alignment with `P2.1.2`
+  - `P2.1.15` (`EDA-63`) reviewed and moved to `DONE`:
+    - `python -m compileall app/` and `python -m compileall alembic/` passed
+    - Metadata/import smoke checks passed (`accounts`, `Arabia Insurance Chats`, `conversation_grades`, `monitoring_highlight_config`, `usage_notifications`)
+    - Alembic head confirmed at `c3a1f82d9b55`
+    - Migration smoke sequence (`upgrade -> downgrade 8c17673a6641 -> upgrade`) passed on isolated review DB
+    - `pytest tests/test_enums.py -q` passed (`5 passed`)
+    - Direct PostgreSQL smoke sequence on forwarded instance (`localhost:5433/aiva`) passed via Alembic:
+      - `upgrade c3a1f82d9b55 -> downgrade 8c17673a6641 -> upgrade c3a1f82d9b55`
+      - pre/post source table counts unchanged (`Arabia Insurance Chats=9090`, `usage_notifications=0`)
+
 ## Next Recommended Action
-- **Milestone 1 is complete.**
-- Define the next milestone / phase scope and create the next task plan (do not create Kanban tasks unless requested).
+- Start Milestone 2 Phase 2 execution (`Auth and Accounts Foundation`) from Gate 2.0 tasks.
 
 ## Notes
 - Kanban MCP is reachable and synchronized with current execution state.
+- Milestone 2 task sync is now current; previous Kanban sync blocker is resolved.
 - Kanban project `aiva-dashboard-be` now includes detailed Phase 2 tasks (`EDA-9` through `EDA-18`).
 - Phase 2 planning decisions captured:
   - `top-intents` should include an `Unknown` category for null/blank intents

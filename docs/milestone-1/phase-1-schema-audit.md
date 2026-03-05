@@ -4,7 +4,7 @@
 - Source documents:
   - `docs/DATABASE_SCHEMA.md`
   - `docs/enhanced_schema.md`
-  - `docs/m1-phase-1.md`
+  - `docs/milestone-1/m1-phase-1.md`
 - Goal:
   - Build a field-level baseline for SQLAlchemy 2.0 modeling.
   - Capture mismatches and normalization requirements before ORM design and migrations.
