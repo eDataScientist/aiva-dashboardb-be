@@ -5,7 +5,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps.auth import get_current_account
 from app.db.deps import get_db
+from app.models.account import Account
 from app.schemas.conversations import (
     ConversationListResponse,
     ConversationMessagesResponse,
@@ -27,6 +29,7 @@ router = APIRouter(prefix="/api/v1/conversations", tags=["conversations"])
 )
 async def list_conversations_endpoint(
     filters: Annotated[ConversationsListQuery, Depends()],
+    current_account: Annotated[Account, Depends(get_current_account)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ConversationListResponse:
     return await list_conversations(db, filters)
@@ -58,6 +61,7 @@ async def get_conversation_messages_endpoint(
             description="Opaque URL-safe conversation identifier returned by the conversations list endpoint.",
         ),
     ],
+    current_account: Annotated[Account, Depends(get_current_account)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ConversationMessagesResponse:
     try:

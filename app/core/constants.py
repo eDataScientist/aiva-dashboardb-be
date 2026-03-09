@@ -2,6 +2,30 @@ from __future__ import annotations
 
 from typing import Final
 
+GRADING_PROVIDER_MOCK: Final[str] = "mock"
+GRADING_PROVIDER_OPENAI_COMPATIBLE: Final[str] = "openai_compatible"
+GRADING_SUPPORTED_PROVIDERS: Final[tuple[str, ...]] = (
+    GRADING_PROVIDER_MOCK,
+    GRADING_PROVIDER_OPENAI_COMPATIBLE,
+)
+GRADING_DEFAULT_MODEL: Final[str] = "mock-grade-v1"
+GRADING_DEFAULT_PROMPT_VERSION: Final[str] = "v1"
+
+AUTH_BEARER_SCHEME: Final[str] = "bearer"
+AUTH_TOKEN_TYPE_ACCESS: Final[str] = "access"
+AUTH_PASSWORD_HASH_SCHEME: Final[str] = "pbkdf2_sha256"
+AUTH_PASSWORD_HASH_DIGEST: Final[str] = "sha256"
+AUTH_PASSWORD_HASH_SALT_BYTES: Final[int] = 16
+AUTH_PASSWORD_HASH_ITERATIONS: Final[int] = 390_000
+AUTH_REQUIRED_TOKEN_CLAIMS: Final[tuple[str, ...]] = (
+    "sub",
+    "email",
+    "role",
+    "type",
+    "iat",
+    "exp",
+)
+
 
 HIGHLIGHT_CODE_TO_LABEL: Final[dict[str, str]] = {
     "frustration_high": "High Frustration",

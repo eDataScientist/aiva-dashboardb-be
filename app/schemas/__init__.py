@@ -10,12 +10,33 @@ from app.schemas.analytics import (
     TopIntentsQuery,
     TopIntentsResponse,
 )
+from app.schemas.auth import (
+    AuthErrorCode,
+    AuthErrorResponse,
+    AuthMeResponse,
+    LoginRequest,
+    LoginResponse,
+    TokenClaims,
+    TokenResponse,
+)
+from app.schemas.accounts import (
+    AccountContext,
+    AccountMeResponse,
+    AccountProfilePatchRequest,
+    AccountProfilePatchResponse,
+    AccountRoleSchema,
+)
 from app.schemas.conversations import (
     ConversationListResponse,
     ConversationMessageItem,
     ConversationMessagesResponse,
     ConversationPathParams,
     ConversationsListQuery,
+)
+from app.schemas.grading import (
+    GradingOutput,
+    GradingParseError,
+    GradingParseErrorCode,
 )
 
 __all__ = [
@@ -27,9 +48,24 @@ __all__ = [
     "QualityTrendResponse",
     "TopIntentsQuery",
     "TopIntentsResponse",
+    "AuthErrorCode",
+    "AuthErrorResponse",
+    "AuthMeResponse",
+    "LoginRequest",
+    "LoginResponse",
+    "TokenClaims",
+    "TokenResponse",
+    "AccountContext",
+    "AccountMeResponse",
+    "AccountProfilePatchRequest",
+    "AccountProfilePatchResponse",
+    "AccountRoleSchema",
     "ConversationListResponse",
     "ConversationMessageItem",
     "ConversationMessagesResponse",
     "ConversationPathParams",
     "ConversationsListQuery",
+    "GradingOutput",
+    "GradingParseError",
+    "GradingParseErrorCode",
 ]

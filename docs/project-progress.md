@@ -3,9 +3,173 @@
 ## Project
 - Name: `aiva-dashboard-be`
 - Current Milestone: `Milestone 2 - AI Grading, Monitoring, and Access Foundations`
-- Current Phase: `Milestone 2 Phase 2 - Auth and Accounts Foundation (complete; Gate 2.0 + Streams A/B/C/D done)`
+- Current Phase: `Milestone 2 Phase 3.5 - Prompt Externalization and Legacy Multi-Prompt Alignment (planned; inserted before Phase 4 execution)`
 
 ## Current Status
+- Milestone 2 Phase 3.5 detailed plan created (`2026-03-09`):
+  - phase doc added: `docs/milestone-2/m2-phase-3.5.md`
+  - milestone overview updated: `docs/milestone-2/milestone-2.md`
+  - milestone planning notes updated: `docs/milestone-2/milestone-notes.md`
+  - canonical checklist updated: `docs/tasks.md`
+  - Phase 4 plan dependency note updated: `docs/milestone-2/m2-phase-4.md`
+  - plan aligns runtime grading with the legacy `generate_conversation_grades.py` prompt architecture:
+    - versioned markdown prompt pack
+    - five prompt domains (`ai_performance`, `conversation_health`, `user_signals`, `escalation`, `intent`)
+    - one customer-day grade executes those five prompt-domain calls asynchronously in parallel
+    - shared `system_prompt.md` with prompt-specific inclusion rules
+    - strict merge back into canonical `GradingOutput`
+  - Kanban board check for planning:
+    - no `TODO` issues
+    - no `IN PROGRESS` issues
+    - per workflow, Kanban task creation remains deferred unless explicitly requested
+- Milestone 2 Phase 4 detailed plan created (`2026-03-09`):
+  - phase doc added: `docs/milestone-2/m2-phase-4.md`
+  - canonical checklist updated: `docs/tasks.md`
+  - plan aligned to existing Phase 3 grading services:
+    - durable `grading_runs` + `grading_run_items` run ledger
+    - batch executor consuming explicit `EMPTY_TRANSCRIPT` / `PROVIDER_ERROR` / `PARSE_ERROR` results
+    - protected manual trigger/run-history API under `/api/v1/grading/runs`
+    - daily previous-day scheduler hook with bounded backfill and duplicate-run safety
+  - Kanban board check for planning:
+    - no `TODO` issues
+    - no `IN PROGRESS` issues
+    - per workflow, Kanban task creation remains deferred unless explicitly requested
+  - execution status update:
+    - Phase 4 remains planned, but is now downstream of the inserted Phase 3.5 prompt refactor
+- Milestone 2 Phase 3 Kanban tasks created (`2026-03-09`):
+  - `P2.3.1` through `P2.3.16` created on project `aiva-dashboard-be`
+  - issue range: `EDA-84` through `EDA-99`
+  - issue descriptions include acceptance criteria, dependencies, expected file targets, testing/validation requirements, and execution notes aligned to `docs/milestone-2/m2-phase-3.md`
+- Milestone 2 Phase 3 Gate 3.0 execution completed (`2026-03-09`) and tasks moved to `IN REVIEW`:
+  - `P2.3.1` (`EDA-84`): grading rubric/output contract and fail-closed parse policy documented in `docs/milestone-2/m2-phase-3.md` and `docs/milestone-2/milestone-notes.md`
+  - `P2.3.2` (`EDA-85`): canonical write-path migration added (`alembic/versions/7f0f67f3d1f2_conversation_grades_canonical_write_path.py`) and `ConversationGrade` updated for canonical uniqueness
+  - `P2.3.3` (`EDA-86`): grading provider/model runtime settings added to config and `.env.example`; config validation tests added (`tests/test_grading_config.py`)
+  - `P2.3.4` (`EDA-87`): internal grading payload and parser error schemas added (`app/schemas/grading.py`) with schema validation tests (`tests/test_grading_schemas.py`)
+  - `P2.3.5` (`EDA-88`): grading service module boundaries/scaffolds added under `app/services/grading_*.py` with shared customer-day selector helpers in `app/services/grading_extraction.py`
+  - Gate validation status:
+    - `python -m compileall app/core app/models app/schemas app/services alembic/versions` passed
+    - `pytest tests/test_grading_config.py tests/test_grading_schemas.py -q` passed (`8 passed`)
+- Milestone 2 Phase 3 Gate 3.0 review completed (`2026-03-09`):
+  - Approved and moved to `DONE`:
+    - `P2.3.1` (`EDA-84`)
+    - `P2.3.2` (`EDA-85`)
+    - `P2.3.3` (`EDA-86`)
+    - `P2.3.5` (`EDA-88`)
+  - `P2.3.4` (`EDA-87`) remains `IN REVIEW`:
+    - `app/schemas/grading.py` currently accepts coerced string inputs such as `"8"` and `"true"` for score/boolean fields, which violates the documented fail-closed parser contract for strict JSON primitives.
+    - Follow-up needed: enforce strict primitive validation for grading output fields before Stream B parser work proceeds.
+  - Review validation status:
+    - `python -m compileall app/core app/models app/schemas app/services alembic/versions tests/test_grading_config.py tests/test_grading_schemas.py` passed
+    - `pytest tests/test_grading_config.py tests/test_grading_schemas.py -q` passed (`8 passed`)
+    - `alembic heads` confirmed `7f0f67f3d1f2` as the sole head
+- Milestone 2 Phase 3 Gate 3.0 rereview completed (`2026-03-09`):
+  - `P2.3.4` (`EDA-87`) approved and moved to `DONE` after the strict parser contract fix:
+    - score fields now use strict integer validation
+    - boolean fields now use strict boolean validation
+    - regression tests now assert that string-typed scores and booleans are rejected instead of coerced
+  - Gate 3.0 is now fully `DONE`
+  - Rereview validation status:
+    - `python -m compileall app/core app/models app/schemas app/services alembic/versions tests/test_grading_config.py tests/test_grading_schemas.py` passed
+    - `pytest tests/test_grading_config.py tests/test_grading_schemas.py -q` passed (`10 passed`)
+    - direct schema repro confirmed `"8"` and `"true"` inputs are rejected
+    - `alembic heads` confirmed `7f0f67f3d1f2` as the sole head
+- Milestone 2 Phase 3 Stream A execution completed (`2026-03-09`) and tasks moved to `IN REVIEW`:
+  - `P2.3.6` (`EDA-89`): async customer-day candidate selection implemented on top of the GST/canonical identity SQL builders in `app/services/grading_extraction.py`
+  - `P2.3.7` (`EDA-90`): transcript assembly/normalization implemented in `app/services/grading_extraction.py`
+  - `P2.3.8` (`EDA-91`): deterministic extraction coverage added for candidate selection and transcript assembly
+- Milestone 2 Phase 3 Stream A review completed (`2026-03-09`) and tasks moved to `DONE`:
+  - `P2.3.6` (`EDA-89`)
+  - `P2.3.7` (`EDA-90`)
+  - `P2.3.8` (`EDA-91`)
+- Milestone 2 Phase 3 Stream B execution completed (`2026-03-09`) and tasks moved to `IN REVIEW`:
+  - `P2.3.9` (`EDA-92`): grading prompt builder implemented with rubric, escalation rules, strict JSON instructions, intent taxonomy injection, and transcript-aware prompt rendering (`app/services/grading_prompt.py`)
+  - `P2.3.10` (`EDA-93`): retrying mock/OpenAI-compatible provider adapter and strict grading parser implemented (`app/services/grading_provider.py`, `app/services/grading_parser.py`)
+  - `P2.3.11` (`EDA-94`): deterministic prompt/parser/provider contract tests added (`tests/test_grading_prompt.py`, `tests/test_grading_parser.py`)
+  - Stream B validation status:
+    - `python -m compileall app/services/grading_provider.py app/services/grading_parser.py app/services/grading_prompt.py app/services/__init__.py tests/test_grading_prompt.py tests/test_grading_parser.py` passed
+    - `pytest tests/test_grading_prompt.py tests/test_grading_parser.py -q` passed (`10 passed`)
+- Milestone 2 Phase 3 Stream B review completed (`2026-03-09`):
+  - Approved and moved to `DONE`:
+    - `P2.3.9` (`EDA-92`)
+  - Returned to `IN PROGRESS` for fixes:
+    - `P2.3.10` (`EDA-93`)
+    - `P2.3.11` (`EDA-94`)
+  - Review findings:
+    - the default `mock` provider path is not executable with real prompt-builder output; `_default_mock_transport` requires `prompt.metadata["mock_response"]`, but `build_grading_prompt()` does not provide that metadata
+    - the Stream B test suite missed that regression because it only exercised the mock provider with hand-built prompt bundles that already injected `mock_response`
+  - Review validation status:
+    - `python -m compileall app/services/grading_prompt.py app/services/grading_provider.py app/services/grading_parser.py tests/test_grading_prompt.py tests/test_grading_parser.py` passed
+    - `pytest tests/test_grading_prompt.py tests/test_grading_parser.py -q` passed (`10 passed`)
+    - direct repro confirmed `build_grading_prompt()` + `build_grading_provider(settings=mock)` fails with `GradingProviderError`
+- Milestone 2 Phase 3 Stream B review fixes applied (`2026-03-09`) and tasks moved back to `IN REVIEW`:
+  - `P2.3.10` (`EDA-93`): default `mock` provider path now returns a deterministic valid grading payload without requiring undocumented `prompt.metadata["mock_response"]` injection
+  - `P2.3.11` (`EDA-94`): regression coverage added for the real `build_grading_prompt()` -> default `mock` provider -> `parse_grading_output()` path
+  - Stream B revalidation status:
+    - `python -m compileall app/services/grading_provider.py tests/test_grading_parser.py tests/test_grading_prompt.py` passed
+    - `pytest tests/test_grading_prompt.py tests/test_grading_parser.py -q` passed (`11 passed`)
+- Milestone 2 Phase 3 Stream B rereview completed (`2026-03-09`) and tasks moved to `DONE`:
+  - `P2.3.10` (`EDA-93`) approved:
+    - default `mock` provider path now works with real `build_grading_prompt()` output
+    - direct repro confirmed prompt-builder -> provider -> parser execution succeeds under `GRADING_PROVIDER=mock`
+  - `P2.3.11` (`EDA-94`) approved:
+    - regression coverage now exercises the exact mocked runtime path that failed in the first review
+  - Stream B rereview validation status:
+    - `python -m compileall app/services/grading_provider.py app/services/grading_parser.py tests/test_grading_parser.py tests/test_grading_prompt.py` passed
+    - `pytest tests/test_grading_prompt.py tests/test_grading_parser.py -q` passed (`11 passed`)
+    - direct repro returned parser-valid mock output (`intent_code=general_inquiry`, `intent_label=General Inquiry`)
+- Milestone 2 Phase 3 Stream C execution completed (`2026-03-09`) and tasks moved to `IN REVIEW`:
+  - `P2.3.12` (`EDA-95`): canonical customer-day persistence implemented in `app/services/grading_persistence.py` with legacy `phone_number + grade_date` fallback for phone-keyed reruns
+  - `P2.3.13` (`EDA-96`): `grade_customer_day()` orchestration implemented in `app/services/grading_pipeline.py` with explicit result payloads and settings-backed provider requests
+  - `P2.3.14` (`EDA-97`): deterministic persistence/orchestration coverage added in `tests/test_grading_pipeline.py` for insert, rerun overwrite, provider failure, and parse-failure no-write behavior
+  - Stream C validation status:
+    - `python -m compileall app/services/grading_persistence.py app/services/grading_pipeline.py app/services/__init__.py tests/test_grading_pipeline.py` passed
+    - `pytest tests/test_grading_pipeline.py -q` passed (`6 passed`)
+- Milestone 2 Phase 3 Stream C review progressed (`2026-03-09`):
+  - Approved and moved to `DONE`:
+    - `P2.3.12` (`EDA-95`)
+  - Returned for fixes and moved back to `IN REVIEW`:
+    - `P2.3.13` (`EDA-96`)
+    - `P2.3.14` (`EDA-97`)
+  - Review findings:
+    - `grade_customer_day()` originally surfaced provider/parser failures as exceptions instead of one explicit orchestration result contract, which did not match the Phase 3 plan for Phase 4 batch/run-history consumers
+    - the pipeline test suite locked in that exception-based contract and did not cover the empty-transcript edge case
+- Milestone 2 Phase 3 Stream C review fixes applied (`2026-03-09`) and tasks moved back to `IN REVIEW`:
+  - `P2.3.13` (`EDA-96`): `grade_customer_day()` now returns explicit in-band success/failure results with stable `EMPTY_TRANSCRIPT`, `PROVIDER_ERROR`, and `PARSE_ERROR` classifications plus structured failure details
+  - `P2.3.14` (`EDA-97`): failure-path tests now assert the explicit failure result contract, and empty-transcript coverage now confirms provider/persistence are skipped when no transcript evidence exists
+  - Stream C revalidation status:
+    - `python -m compileall app/services/grading_pipeline.py app/services/__init__.py tests/test_grading_pipeline.py` passed
+    - `pytest tests/test_grading_pipeline.py -q` passed (`7 passed`)
+- Milestone 2 Phase 3 Stream C rereview completed (`2026-03-09`) and tasks moved to `DONE`:
+  - `P2.3.12` (`EDA-95`) approved:
+    - canonical customer-day persistence remains caller-controlled for transaction scope and safely reuses legacy phone-keyed rows on reruns
+  - `P2.3.13` (`EDA-96`) approved:
+    - `grade_customer_day()` now returns deterministic in-band success/failure results for provider, parser, and empty-transcript outcomes
+    - no-partial-write behavior remains intact because persistence still runs only after successful parse
+  - `P2.3.14` (`EDA-97`) approved:
+    - grading pipeline tests now assert the explicit failure-result contract instead of exception propagation
+    - empty-transcript coverage now prevents silent grading of customer-days with no transcript evidence
+  - Stream C rereview validation status:
+    - `python -m compileall app/services/grading_pipeline.py app/services/__init__.py tests/test_grading_pipeline.py` passed
+    - `pytest tests/test_grading_pipeline.py -q` passed (`7 passed`)
+- Milestone 2 Phase 3 Stream D execution completed (`2026-03-09`) and tasks moved to `IN REVIEW`:
+  - `P2.3.15` (`EDA-98`): Phase 3 compile verification passed and the full targeted grading suite passed outside sandbox
+  - `P2.3.16` (`EDA-99`): `docs/tasks.md`, `docs/project-progress.md`, and `docs/milestone-2/m2-phase-3.md` synchronized with Stream D execution outcomes and Phase 4 handoff notes
+  - Stream D validation status:
+    - `python -m compileall app tests` passed
+    - sandboxed `pytest tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_extraction.py tests/test_grading_prompt.py tests/test_grading_parser.py tests/test_grading_pipeline.py -q` partially passed (`21 passed`) before extraction/pipeline suites hit the expected Docker npipe permission blocker (`CreateFile Access is denied`)
+    - unrestricted rerun passed (`31 passed`)
+- Milestone 2 Phase 3 residual handoff risks captured (`2026-03-09`):
+  - Environment/runtime: extraction and pipeline tests still require unrestricted Docker/Testcontainers access in this environment
+  - Provider/runtime: `GRADING_PROVIDER=mock` remains valid for deterministic local/test execution, but Phase 4 non-test batch runs need explicit external-provider configuration before live grading
+  - Orchestration contract: Phase 4 batch/run-history work must consume the in-band `EMPTY_TRANSCRIPT` / `PROVIDER_ERROR` / `PARSE_ERROR` result model from `grade_customer_day()` instead of assuming exception-only failures
+- Milestone 2 Phase 3 Stream D closure completed (`2026-03-09`) and tasks moved to `DONE`:
+  - `P2.3.15` (`EDA-98`) moved to `DONE` without separate review because no code files were modified
+  - `P2.3.16` (`EDA-99`) moved to `DONE` without separate review because only documentation files were modified
+- Milestone 2 Phase 3 detailed plan created: `docs/milestone-2/m2-phase-3.md` (Gate 3.0 + Streams A/B/C/D with atomic task contracts aligned to grading pipeline scope).
+- Milestone 2 Kanban board check for planning kickoff (`2026-03-05`):
+  - no `TODO` issues
+  - no `IN PROGRESS` issues
+  - per workflow, planning artifacts were updated and Kanban task creation remains deferred unless explicitly requested.
 - Milestone 2 Phase 2 detailed plan created: `docs/milestone-2/m2-phase-2.md` (Gate 2.0 + Streams A-D with atomic task contracts).
 - Milestone 2 Phase 2 Gate 2.0 execution started (`2026-03-05`):
   - `P2.2.1` (`EDA-64`) completed, reviewed, and moved to `DONE`:
@@ -180,7 +344,7 @@
       - pre/post source table counts unchanged (`Arabia Insurance Chats=9090`, `usage_notifications=0`)
 
 ## Next Recommended Action
-- Start planning/execution for the next Milestone 2 phase now that Phase 2 auth/accounts foundation is complete.
+- Create Milestone 2 Phase 3.5 Kanban tasks or begin Gate 3.5 execution.
 
 ## Notes
 - Kanban MCP is reachable and synchronized with current execution state.
@@ -206,4 +370,5 @@
 - Phase 5 testing runtime note:
   - Docker/testcontainers tests may require elevated execution outside sandboxed runs.
 - Stream D validation runtime note:
-  - sandboxed targeted pytest run failed with Docker npipe permission error (`CreateFile Access is denied`), while unrestricted run passed (`30 passed`).
+  - sandboxed Docker/Testcontainers runs still fail with the expected npipe permission error (`CreateFile Access is denied`)
+  - unrestricted reruns passed for both Phase 2 auth scope (`30 passed`) and Phase 3 grading scope (`31 passed`)

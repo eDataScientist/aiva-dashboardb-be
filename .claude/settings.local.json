@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"C:\\\\Users\\\\Mohammed Ali\\\\Documents\\\\Projects\\\\aiva-dashboard-be\" && python -m compileall app/ 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\Mohammed Ali\\\\Documents\\\\Projects\\\\aiva-dashboard-be\" && python -m compileall alembic/versions/ 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\Mohammed Ali\\\\Documents\\\\Projects\\\\aiva-dashboard-be\" && python -c \"\nfrom alembic.config import Config\nfrom alembic.script import ScriptDirectory\n\ncfg = Config\\('alembic.ini'\\)\nsd = ScriptDirectory.from_config\\(cfg\\)\nrevisions = list\\(sd.walk_revisions\\(\\)\\)\nfor rev in reversed\\(revisions\\):\n    print\\(f'{rev.revision} -> {rev.down_revision}  [{rev.doc}]'\\)\n\" 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\Mohammed Ali\\\\Documents\\\\Projects\\\\aiva-dashboard-be\" && python -c \"\nfrom app.models import Account, AccountRole\nfrom app.db.base import Base\n\n# Check table name and columns\ntbl = Account.__table__\nprint\\('Table:', tbl.name\\)\nprint\\('Columns:', [c.name for c in tbl.columns]\\)\nprint\\('Constraints:', [c.name for c in tbl.constraints]\\)\n\n# Smoke-test ORM-level email normalization\na = Account.__new__\\(Account\\)\nresult = a._normalize_email\\(None, '  Test@Example.COM  '\\)\nprint\\('Email normalized:', result\\)\n\n# Smoke-test role validation\nr = a._validate_role\\(None, 'super_admin'\\)\nprint\\('Role validated:', r\\)\n\n# Smoke-test invalid role returns None\nr_invalid = a._validate_role\\(None, 'root'\\)\nprint\\('Invalid role returns:', r_invalid\\)\n\n# AccountRole enum values\nprint\\('AccountRole values:', [e.value for e in AccountRole]\\)\n\" 2>&1)",
+      "mcp__vibe_kanban__list_issues",
+      "mcp__vibe_kanban__list_workspaces",
+      "mcp__vibe_kanban__list_organizations",
+      "mcp__vibe_kanban__list_projects",
+      "mcp__vibe_kanban__update_issue",
+      "mcp__vibe_kanban__list_issue_priorities",
+      "mcp__vibe_kanban__get_issue"
+    ]
+  }
+}

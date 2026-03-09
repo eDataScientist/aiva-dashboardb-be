@@ -79,7 +79,7 @@ Last Updated: `2026-03-02` (Post-completion Stream A review: `P1.2.2` approved; 
 
 ## Milestone 2: AI Grading, Monitoring, and Access Foundations
 Status: `IN PROGRESS`  
-Last Updated: `2026-03-05` (Stream D review completed; `P2.2.16` and `P2.2.17` moved to `DONE`)
+Last Updated: `2026-03-09` (Inserted Phase 3.5 prompt externalization plan before Phase 4 execution)
 
 ## Phase 1 - Gate 1.0 (Shared Milestone 2 Data Contracts)
 - [x] `P2.1.1 - Design - Finalize customer-day grade grain and canonical identity contract - Gate (Independent)`
@@ -132,3 +132,87 @@ Last Updated: `2026-03-05` (Stream D review completed; `P2.2.16` and `P2.2.17` m
 ## Stream D (Phase Validation and Handoff)
 - [x] `P2.2.16 - QA - Run compile and targeted pytest verification for Phase 2 auth scope - Stream D (Dependent)` (`P2.2.9`, `P2.2.12`, `P2.2.15`) - `DONE` (compile passed; targeted auth/profile/guard suites passed outside sandbox: `30 passed`)
 - [x] `P2.2.17 - Docs - Update task/progress docs with Phase 2 execution notes and residual risks - Stream D (Dependent)` (`P2.2.16`) - `DONE` (tasks/progress/phase docs synchronized with Stream D execution outcomes)
+
+## Phase 3 - Gate 3.0 (AI Grading Pipeline Core)
+## Gate 3.0
+- [x] `P2.3.1 - Design - Finalize grading rubric/output contract and parse-failure policy - Gate (Independent)` - `DONE`
+- [x] `P2.3.2 - DB - Validate conversation_grades write constraints and add additive migration if gaps exist - Gate (Dependent)` (`P2.3.1`) - `DONE`
+- [x] `P2.3.3 - Config - Add grading provider/model settings contract and validation - Gate (Dependent)` (`P2.3.1`) - `DONE`
+- [x] `P2.3.4 - API - Define internal grading schemas and parser error contract - Gate (Dependent)` (`P2.3.1`) - `DONE`
+- [x] `P2.3.5 - Service - Scaffold grading module boundaries and shared customer-day selectors - Gate (Dependent)` (`P2.3.2`, `P2.3.4`) - `DONE`
+
+## Stream A (Customer-Day Extraction and Transcript Assembly)
+- [x] `P2.3.6 - Service - Implement customer-day candidate selection and canonical identity grouping - Stream A (Dependent)` (`P2.3.5`) - `DONE`
+- [x] `P2.3.7 - Service - Implement transcript assembly/normalization for one customer-day - Stream A (Dependent)` (`P2.3.6`) - `DONE`
+- [x] `P2.3.8 - Test - Add deterministic extraction/normalization fixtures and coverage - Stream A (Dependent)` (`P2.3.7`) - `DONE` (`tests/test_grading_extraction.py` added; targeted pytest passed outside sandbox: `3 passed`)
+
+## Stream B (Prompting, Provider Adapter, and Parse Validation)
+- [x] `P2.3.9 - Service - Implement grading prompt builder with rubric and intent taxonomy injection - Stream B (Dependent)` (`P2.3.4`) - `DONE`
+- [x] `P2.3.10 - Service - Implement AI grader adapter plus strict parse/validation flow - Stream B (Dependent)` (`P2.3.3`, `P2.3.9`) - `DONE` (rereview approved after fixing the default `mock` provider path and verifying real prompt-builder -> provider -> parser execution)
+- [x] `P2.3.11 - Test - Add prompt/parser contract tests with mocked provider responses - Stream B (Dependent)` (`P2.3.10`) - `DONE` (rereview approved after adding regression coverage for the real `build_grading_prompt()` -> default-`mock`-provider -> `parse_grading_output()` path)
+
+## Stream C (Persistence and Core Orchestration)
+- [x] `P2.3.12 - Service - Implement conversation_grades upsert persistence for one customer-day - Stream C (Dependent)` (`P2.3.2`, `P2.3.4`) - `DONE` (review approved; `app/services/grading_persistence.py`, `tests/test_grading_pipeline.py`)
+- [x] `P2.3.13 - Service - Implement grade_customer_day orchestration (extract -> grade -> persist) - Stream C (Dependent)` (`P2.3.8`, `P2.3.11`, `P2.3.12`) - `DONE` (rereview approved after explicit success/failure result contract and empty-transcript short-circuit were added; targeted pytest passed: `7 passed`)
+- [x] `P2.3.14 - Test - Add grading pipeline service tests for idempotent reruns and partial-failure behavior - Stream C (Dependent)` (`P2.3.13`) - `DONE` (rereview approved after failure-result assertions and empty-transcript coverage were added; targeted pytest passed: `7 passed`)
+
+## Stream D (Phase Validation and Handoff)
+- [x] `P2.3.15 - QA - Run compile and targeted pytest verification for grading pipeline scope - Stream D (Dependent)` (`P2.3.14`) - `DONE` (compile passed; sandboxed grading pytest hit the expected Docker npipe blocker; unrestricted targeted grading suite passed: `31 passed`)
+- [x] `P2.3.16 - Docs - Update task/progress docs with Phase 3 execution notes and Phase 4 handoff risks - Stream D (Dependent)` (`P2.3.15`) - `DONE` (`docs/tasks.md`, `docs/project-progress.md`, and `docs/milestone-2/m2-phase-3.md` synchronized with Stream D execution notes and Phase 4 handoff risks)
+
+## Phase 3.5 - Prompt Externalization and Legacy Multi-Prompt Alignment
+## Gate 3.5
+- [ ] `P2.35.1 - Design - Finalize prompt-pack contract, legacy parity scope, and merge strategy - Gate (Independent)`
+- [ ] `P2.35.2 - DB - Validate that no migration is required for prompt externalization scope - Gate (Dependent)` (`P2.35.1`)
+- [ ] `P2.35.3 - Config - Add prompt-pack settings and validation contract - Gate (Dependent)` (`P2.35.1`)
+- [ ] `P2.35.4 - API - Define internal prompt-spec and partial-output schemas - Gate (Dependent)` (`P2.35.1`)
+- [ ] `P2.35.5 - Service - Scaffold prompt-pack loader and multi-prompt orchestration module boundaries - Gate (Dependent)` (`P2.35.3`, `P2.35.4`)
+
+## Stream A (Prompt Assets and File Loader)
+- [ ] `P2.35.6 - Service - Externalize grading prompts into versioned markdown prompt-pack assets - Stream A (Dependent)` (`P2.35.5`)
+- [ ] `P2.35.7 - Service - Implement prompt-pack file loader with shared system-prompt injection rules - Stream A (Dependent)` (`P2.35.6`)
+- [ ] `P2.35.8 - Test - Add prompt-pack loader and asset integrity tests - Stream A (Dependent)` (`P2.35.7`)
+
+## Stream B (Multi-Prompt Build, Parse, and Canonical Merge)
+- [ ] `P2.35.9 - Service - Implement per-domain prompt bundle generation aligned to legacy 5-prompt flow - Stream B (Dependent)` (`P2.35.7`)
+- [ ] `P2.35.10 - Service - Implement partial-result parsing and canonical GradingOutput merge - Stream B (Dependent)` (`P2.35.4`, `P2.35.9`)
+- [ ] `P2.35.11 - Test - Add deterministic multi-prompt parse and merge contract tests - Stream B (Dependent)` (`P2.35.10`)
+
+## Stream C (Pipeline Integration and Runtime Compatibility)
+- [ ] `P2.35.12 - Service - Integrate file-based multi-prompt execution into grade_customer_day orchestration - Stream C (Dependent)` (`P2.35.10`)
+- [ ] `P2.35.13 - Service - Update provider and mock runtime contracts for prompt-pack execution - Stream C (Dependent)` (`P2.35.12`)
+- [ ] `P2.35.14 - Test - Add end-to-end grading pipeline tests for file-based multi-prompt execution - Stream C (Dependent)` (`P2.35.13`)
+
+## Stream D (Validation, Docs, and Phase 4 Handoff)
+- [ ] `P2.35.15 - QA - Run compile and targeted pytest verification for prompt-pack refactor scope - Stream D (Dependent)` (`P2.35.11`, `P2.35.14`)
+- [ ] `P2.35.16 - Docs - Update task/progress docs and Phase 4 dependency notes after prompt refactor - Stream D (Dependent)` (`P2.35.15`)
+
+## Phase 4 - Gate 4.0 (Batch Execution and Run Management)
+Phase dependency note: execution is deferred until Phase 3.5 prompt externalization completes.
+
+## Gate 4.0
+- [ ] `P2.4.1 - Design - Finalize batch run contract, statuses, idempotency, and access matrix - Gate (Independent)`
+- [ ] `P2.4.2 - DB - Add grading run and run-item schema for durable history - Gate (Dependent)` (`P2.4.1`)
+- [ ] `P2.4.3 - Config - Add batch execution and scheduler settings contract - Gate (Dependent)` (`P2.4.1`)
+- [ ] `P2.4.4 - API - Define grading run trigger/history schemas and error payloads - Gate (Dependent)` (`P2.4.1`)
+- [ ] `P2.4.5 - Service - Scaffold grading batch execution and run-tracking module boundaries - Gate (Dependent)` (`P2.4.2`, `P2.4.4`)
+
+## Stream A (Run Ledger Persistence)
+- [ ] `P2.4.6 - Service - Implement grading run lifecycle persistence and status transitions - Stream A (Dependent)` (`P2.4.5`)
+- [ ] `P2.4.7 - Service - Implement run-item result recording and aggregated counters - Stream A (Dependent)` (`P2.4.6`)
+- [ ] `P2.4.8 - Test - Add deterministic run-ledger persistence tests - Stream A (Dependent)` (`P2.4.7`)
+
+## Stream B (Batch Executor and Idempotent Date Windows)
+- [ ] `P2.4.9 - Service - Implement date-window planning with scheduled/manual skip-rerun policy - Stream B (Dependent)` (`P2.4.5`)
+- [ ] `P2.4.10 - Service - Implement batch executor over customer-day candidates with advisory locking - Stream B (Dependent)` (`P2.4.7`, `P2.4.9`)
+- [ ] `P2.4.11 - Test - Add batch executor tests for scheduled, rerun, and mixed-failure runs - Stream B (Dependent)` (`P2.4.10`)
+
+## Stream C (Manual Trigger and Run History API)
+- [ ] `P2.4.12 - Service - Implement manual run trigger/list/detail service wrappers and access checks - Stream C (Dependent)` (`P2.4.4`, `P2.4.10`)
+- [ ] `P2.4.13 - API - Add protected grading run trigger and history endpoints - Stream C (Dependent)` (`P2.4.12`)
+- [ ] `P2.4.14 - Test - Add grading run API tests for auth, validation, and history payloads - Stream C (Dependent)` (`P2.4.13`)
+
+## Stream D (Daily Scheduling, Phase Validation, and Handoff)
+- [ ] `P2.4.15 - Infra - Add previous-day scheduler hook and stale-run recovery path - Stream D (Dependent)` (`P2.4.10`)
+- [ ] `P2.4.16 - QA - Run compile and targeted pytest verification for batch/run-management scope - Stream D (Dependent)` (`P2.4.11`, `P2.4.14`, `P2.4.15`)
+- [ ] `P2.4.17 - Docs - Update task/progress docs with Phase 4 execution notes and Phase 5/6 handoff risks - Stream D (Dependent)` (`P2.4.16`)

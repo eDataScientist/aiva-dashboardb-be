@@ -30,6 +30,37 @@ This document captures milestone-level planning decisions made during discussion
   - `company_admin`
   - `analyst`
 
+## Phase 2 Gate 2.0 Auth Contract Decisions (`2026-03-05`)
+- Auth transport finalized as JWT bearer tokens in the `Authorization` header.
+- Phase 2 token model is access-token only (no refresh token lifecycle in this phase).
+- Required access-token claims: `sub`, `email`, `role`, `type=access`, `iat`, `exp`.
+- Optional configured claims: `iss`, `aud`.
+- Route access baseline:
+  - public: `POST /api/v1/auth/login`, `GET /health`
+  - authenticated (any active role): `/api/v1/auth/me`, `/api/v1/accounts/me` (GET/PATCH), `/api/v1/analytics/*`, `/api/v1/conversations/*`
+- Fine-grained role restrictions on analytics/conversations remain deferred to later Milestone 2 phases.
+
+## Phase 3 Gate 3.0 Grading Contract Decisions (`2026-03-09`)
+- Provider output contract is a single strict JSON object with field names aligned directly to `conversation_grades`.
+- All score, boolean, escalation, and intent fields require companion non-empty English reasoning text.
+- `intent_code` is authoritative and `intent_label` must match the canonical label map.
+- Parse failures are fail-closed:
+  - invalid/malformed/partial model output is rejected
+  - no partial grade row is persisted
+  - downstream orchestration should treat the result as a controlled parser/provider error
+- Provider/runtime retries remain an adapter/orchestration concern, not parser behavior.
+
+## Phase 3.5 Prompt Architecture Revision Direction (`2026-03-09`)
+- Move away from the single hardcoded runtime prompt in `app/services/grading_prompt.py`.
+- Align runtime prompt structure with `generate_conversation_grades.py`:
+  - five markdown prompt files
+  - shared `system_prompt.md`
+  - prompt-specific `include_system_prompt` behavior
+- One customer-day grade executes all five prompt-domain requests asynchronously in parallel, then merges them into one canonical grade result.
+- Keep the Phase 3 canonical grading persistence contract (`GradingOutput`) even if legacy markdown prompt wording needs revision.
+- Prefer an app-owned versioned prompt-pack directory over working-directory-dependent reads from repo-root markdown files.
+- Phase 4 batch execution should wait until this prompt-pack refactor is complete.
+
 ## Phase Ordering (High-Level)
 - Data contract and migrations should come before auth implementation.
 - The data-contract phase should include models needed for auth/accounts as well as Milestone 2 grading/monitoring support.

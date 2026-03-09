@@ -5,7 +5,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps.auth import get_current_account
 from app.db.deps import get_db
+from app.models.account import Account
 from app.schemas.analytics import (
     AnalyticsChannelFilter,
     AnalyticsFilterQuery,
@@ -36,6 +38,7 @@ router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
 )
 async def get_analytics_summary(
     filters: Annotated[AnalyticsFilterQuery, Depends()],
+    current_account: Annotated[Account, Depends(get_current_account)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AnalyticsSummaryResponse:
     return await _summary_service(
@@ -53,6 +56,7 @@ async def get_analytics_summary(
 )
 async def get_message_volume_trend(
     filters: Annotated[AnalyticsFilterQuery, Depends()],
+    current_account: Annotated[Account, Depends(get_current_account)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> MessageVolumeTrendResponse:
     return await _volume_trend_service(
@@ -70,6 +74,7 @@ async def get_message_volume_trend(
 )
 async def get_top_intents(
     filters: Annotated[TopIntentsQuery, Depends()],
+    current_account: Annotated[Account, Depends(get_current_account)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> TopIntentsResponse:
     return await _top_intents_service(
@@ -88,6 +93,7 @@ async def get_top_intents(
 )
 async def get_peak_hours(
     filters: Annotated[AnalyticsFilterQuery, Depends()],
+    current_account: Annotated[Account, Depends(get_current_account)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> PeakHoursResponse:
     return await _peak_hours_service(
@@ -105,6 +111,7 @@ async def get_peak_hours(
 )
 async def get_quality_trend(
     filters: Annotated[AnalyticsFilterQuery, Depends()],
+    current_account: Annotated[Account, Depends(get_current_account)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> QualityTrendResponse:
     return await compute_quality_trend(
@@ -122,6 +129,7 @@ async def get_quality_trend(
 )
 async def get_lead_conversion_trend(
     filters: Annotated[AnalyticsFilterQuery, Depends()],
+    current_account: Annotated[Account, Depends(get_current_account)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> LeadConversionTrendResponse:
     return await compute_lead_conversion_trend(

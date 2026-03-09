@@ -11,6 +11,12 @@ os.environ.setdefault("TESTCONTAINERS_RYUK_DISABLED", "true")
 
 # Set dummy DATABASE_URL so that app.main import and get_settings() doesn't fail
 os.environ.setdefault("DATABASE_URL", "postgresql://dummy:dummy@localhost:5432/dummy")
+os.environ.setdefault(
+    "AUTH_JWT_SECRET",
+    "test-only-auth-secret-minimum-length-32",
+)
+os.environ.setdefault("AUTH_JWT_ALGORITHM", "HS256")
+os.environ.setdefault("AUTH_ACCESS_TOKEN_EXPIRE_MINUTES", "60")
 
 from app.db import database
 from app.db.deps import get_db

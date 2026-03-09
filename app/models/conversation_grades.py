@@ -7,12 +7,14 @@ from sqlalchemy import (
     Boolean,
     Date,
     DateTime,
+    Index,
     SmallInteger,
     String,
     Text,
     UniqueConstraint,
     Uuid,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, validates
 
@@ -33,10 +35,20 @@ class ConversationGrade(Base):
             "grade_date",
             name="uq_conversation_grades_phone_number_grade_date",
         ),
+        Index(
+            "uq_conversation_grades_identity_day",
+            "identity_type",
+            "conversation_identity",
+            "grade_date",
+            unique=True,
+            postgresql_where=text(
+                "identity_type IS NOT NULL AND conversation_identity IS NOT NULL"
+            ),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
-    phone_number: Mapped[str] = mapped_column(String(64), nullable=False)
+    phone_number: Mapped[str | None] = mapped_column(String(64), nullable=True)
     grade_date: Mapped[date] = mapped_column(Date, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False),

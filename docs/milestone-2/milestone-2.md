@@ -53,6 +53,15 @@ Subtasks (brief):
 - Persist grade metrics, flags, and intent classification in one pass.
 - Validate core grading correctness with deterministic fixtures/mocks.
 
+## Phase 3.5 - Prompt Externalization and Legacy Prompt Alignment
+Objective: Move runtime grading away from the single hardcoded prompt and onto a versioned markdown prompt pack aligned to the legacy generator structure.
+
+Subtasks (brief):
+- Externalize grading prompts into versioned markdown assets.
+- Reintroduce the legacy five-prompt decomposition (`ai_performance`, `conversation_health`, `user_signals`, `escalation`, `intent`) in runtime services.
+- Add prompt-pack loading/version validation and deterministic merge back into canonical grading output.
+- Verify prompt-driven grading behavior before operational batch execution begins.
+
 ## Phase 4 - Batch Execution and Run Management
 Objective: Operationalize grading with daily execution, manual triggers, and run tracking.
 
@@ -91,7 +100,8 @@ Subtasks (brief):
 
 ## Phase Dependencies
 - `Phase 1 -> Phase 2 -> Phase 3`
-- `Phase 4` depends on `Phase 3`
+- `Phase 3.5` depends on `Phase 3`
+- `Phase 4` depends on `Phase 3.5`
 - `Phase 5` depends on `Phase 3` (and may consume execution outputs standardized in `Phase 4`)
 - `Phase 6` depends on `Phase 2` and `Phase 3`
 - `Phase 7` closes the milestone after implementation phases complete
@@ -102,6 +112,7 @@ Exact gate/stream parallelism will be defined in each phase document.
 - Updated schema/migrations for Milestone 2 grading and auth/account models
 - Simple password auth layer and account profile APIs
 - AI grading pipeline core and batch execution flow
+- Versioned grading prompt pack aligned to the legacy markdown prompt workflow
 - AI Quality Metrics API endpoints (graded-data based)
 - Customer-day conversations monitoring API endpoints
 - Expanded automated test coverage for new milestone features
