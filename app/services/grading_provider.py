@@ -156,19 +156,24 @@ async def _default_openai_compatible_transport(
 ) -> str:
     base_url = (settings.grading_base_url or "https://api.openai.com/v1").rstrip("/")
     timeout = httpx.Timeout(request.timeout_seconds)
-    payload = {
-        "model": request.model,
-        "response_format": {"type": "json_object"},
-        "messages": [
+    messages = []
+    if request.prompt.system_prompt is not None:
+        messages.append(
             {
                 "role": "system",
                 "content": request.prompt.system_prompt,
-            },
-            {
-                "role": "user",
-                "content": request.prompt.user_prompt,
-            },
-        ],
+            }
+        )
+    messages.append(
+        {
+            "role": "user",
+            "content": request.prompt.user_prompt,
+        }
+    )
+    payload = {
+        "model": request.model,
+        "response_format": {"type": "json_object"},
+        "messages": messages,
     }
     headers = {
         "Authorization": f"Bearer {settings.grading_api_key}",

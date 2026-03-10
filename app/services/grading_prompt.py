@@ -3,8 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from app.core.constants import GRADING_DEFAULT_PROMPT_VERSION, INTENT_CODE_TO_LABEL
+from app.core.config import Settings, get_settings
+from app.core.constants import INTENT_CODE_TO_LABEL
+from app.schemas.grading_prompts import PromptDomain
 from app.services.grading_extraction import CustomerDayTranscript, TranscriptMessage
+from app.services.grading_prompt_assets import LoadedPromptPack, load_prompt_pack
 
 _INTENT_TAXONOMY_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
@@ -124,9 +127,11 @@ Required JSON fields:
 
 @dataclass(frozen=True, slots=True)
 class PromptBundle:
-    system_prompt: str
+    system_prompt: str | None
     user_prompt: str
     prompt_version: str
+    prompt_key: str = "grading"
+    output_fields: tuple[str, ...] = ()
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -134,17 +139,61 @@ class GradingPromptBuilder(Protocol):
     def __call__(self, transcript: CustomerDayTranscript) -> PromptBundle: ...
 
 
-def build_grading_prompt(transcript: CustomerDayTranscript) -> PromptBundle:
+@dataclass(frozen=True, slots=True)
+class PromptExecutionPlan:
+    prompt_version: str
+    bundles: tuple[PromptBundle, ...]
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+class MultiPromptExecutionPlanner(Protocol):
+    def __call__(self, transcript: CustomerDayTranscript) -> PromptExecutionPlan: ...
+
+
+def build_grading_prompt(
+    transcript: CustomerDayTranscript,
+    *,
+    settings: Settings | None = None,
+) -> PromptBundle:
+    resolved_settings = settings or get_settings()
     return PromptBundle(
         system_prompt=_build_system_prompt(),
         user_prompt=_build_user_prompt(transcript),
-        prompt_version=GRADING_DEFAULT_PROMPT_VERSION,
-        metadata={
-            "identity_type": transcript.candidate.identity_type.value,
-            "conversation_identity": transcript.candidate.conversation_identity,
-            "grade_date": transcript.candidate.grade_date.isoformat(),
-            "message_count": len(transcript.messages),
-        },
+        prompt_version=resolved_settings.grading_prompt_version,
+        metadata=_build_prompt_metadata(transcript),
+    )
+
+
+def build_prompt_execution_plan(
+    transcript: CustomerDayTranscript,
+    *,
+    prompt_pack: LoadedPromptPack | None = None,
+) -> PromptExecutionPlan:
+    loaded_prompt_pack = prompt_pack or load_prompt_pack()
+    metadata = _build_prompt_metadata(transcript)
+    bundles = tuple(
+        PromptBundle(
+            system_prompt=None,
+            user_prompt=_render_prompt_template(
+                template_text=loaded_prompt_pack.get_template(template.prompt_key),
+                conversation_text=_render_transcript_messages(transcript),
+                system_prompt_text=(
+                    loaded_prompt_pack.system_prompt_text
+                    if template.include_system_prompt
+                    else None
+                ),
+            ),
+            prompt_version=loaded_prompt_pack.manifest.version,
+            prompt_key=template.prompt_key.value,
+            output_fields=template.output_fields,
+            metadata={**metadata, "prompt_key": template.prompt_key.value},
+        )
+        for template in loaded_prompt_pack.manifest.prompt_templates
+    )
+    return PromptExecutionPlan(
+        prompt_version=loaded_prompt_pack.manifest.version,
+        bundles=bundles,
+        metadata=metadata,
     )
 
 
@@ -171,6 +220,15 @@ def _build_user_prompt(transcript: CustomerDayTranscript) -> str:
             _render_transcript_messages(transcript),
         )
     )
+
+
+def _build_prompt_metadata(transcript: CustomerDayTranscript) -> dict[str, Any]:
+    return {
+        "identity_type": transcript.candidate.identity_type.value,
+        "conversation_identity": transcript.candidate.conversation_identity,
+        "grade_date": transcript.candidate.grade_date.isoformat(),
+        "message_count": len(transcript.messages),
+    }
 
 
 def _render_intent_taxonomy() -> str:
@@ -238,3 +296,15 @@ def _format_escalated_token(value: bool | None) -> str:
     if value is False:
         return "false"
     return "unknown"
+
+
+def _render_prompt_template(
+    *,
+    template_text: str,
+    conversation_text: str,
+    system_prompt_text: str | None,
+) -> str:
+    rendered = template_text.replace("{{conversation}}", conversation_text)
+    if system_prompt_text is not None:
+        rendered = rendered.replace("{{system_prompt}}", system_prompt_text)
+    return rendered

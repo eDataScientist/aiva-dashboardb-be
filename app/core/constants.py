@@ -10,6 +10,29 @@ GRADING_SUPPORTED_PROVIDERS: Final[tuple[str, ...]] = (
 )
 GRADING_DEFAULT_MODEL: Final[str] = "mock-grade-v1"
 GRADING_DEFAULT_PROMPT_VERSION: Final[str] = "v1"
+GRADING_PROMPT_PACK_BASE_DIR: Final[str] = "app/prompt_assets/grading"
+GRADING_PROMPT_SYSTEM_PROMPT_FILE: Final[str] = "system_prompt.md"
+GRADING_PROMPT_DOMAIN_ORDER: Final[tuple[str, ...]] = (
+    "ai_performance",
+    "conversation_health",
+    "user_signals",
+    "escalation",
+    "intent",
+)
+GRADING_PROMPT_DOMAIN_TO_TEMPLATE_FILE: Final[dict[str, str]] = {
+    "ai_performance": "ai_performance_judge.md",
+    "conversation_health": "conversation_health.md",
+    "user_signals": "user-signals.md",
+    "escalation": "escalation.md",
+    "intent": "intent.md",
+}
+GRADING_PROMPT_DOMAIN_SYSTEM_PROMPT_KEYS: Final[frozenset[str]] = frozenset(
+    {"ai_performance", "escalation"}
+)
+GRADING_PROMPT_REQUIRED_FILES: Final[tuple[str, ...]] = (
+    GRADING_PROMPT_SYSTEM_PROMPT_FILE,
+    *tuple(GRADING_PROMPT_DOMAIN_TO_TEMPLATE_FILE.values()),
+)
 
 AUTH_BEARER_SCHEME: Final[str] = "bearer"
 AUTH_TOKEN_TYPE_ACCESS: Final[str] = "access"
@@ -58,3 +81,6 @@ INTENT_CODE_TO_LABEL: Final[dict[str, str]] = {
 }
 
 INTENT_CODES: Final[tuple[str, ...]] = tuple(INTENT_CODE_TO_LABEL.keys())
+INTENT_LABEL_TO_CODE: Final[dict[str, str]] = {
+    label: code for code, label in INTENT_CODE_TO_LABEL.items()
+}

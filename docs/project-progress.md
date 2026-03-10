@@ -6,6 +6,46 @@
 - Current Phase: `Milestone 2 Phase 3.5 - Prompt Externalization and Legacy Multi-Prompt Alignment (planned; inserted before Phase 4 execution)`
 
 ## Current Status
+- Milestone 2 Phase 3.5 Gate 3.5 rereview completed (`2026-03-10`):
+  - Approved and moved to `DONE`:
+    - `P2.35.3` (`EDA-102`)
+    - `P2.35.4` (`EDA-103`)
+    - `P2.35.5` (`EDA-104`)
+  - Rereview outcomes:
+    - `build_grading_prompt()` now reports the active configured prompt-pack version instead of the default constant
+    - `PromptPackManifest` now enforces the full fixed five-domain contract and regression coverage rejects incomplete manifests
+    - the prompt execution-plan path now delivers `system_prompt.md` through exactly one channel, with regression coverage confirming the prior duplication is removed
+  - Rereview validation status:
+    - `python -m compileall app/core app/schemas app/services tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_prompt.py` passed
+    - `pytest tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_prompt.py tests/test_grading_parser.py -q` passed (`28 passed`)
+    - non-blocking environment note: pytest emitted `.pytest_cache` permission warnings in this workspace
+- Milestone 2 Phase 3.5 Gate 3.5 review completed (`2026-03-09`):
+  - Approved and moved to `DONE`:
+    - `P2.35.1` (`EDA-100`)
+    - `P2.35.2` (`EDA-101`)
+  - Kept in `IN REVIEW` for fixes:
+    - `P2.35.3` (`EDA-102`)
+    - `P2.35.4` (`EDA-103`)
+    - `P2.35.5` (`EDA-104`)
+  - Review findings:
+    - `build_grading_prompt()` still hardcodes `GRADING_DEFAULT_PROMPT_VERSION`, so one runtime path can report stale prompt metadata instead of the active prompt-pack version
+    - `PromptPackManifest` validation currently accepts incomplete prompt-domain sets, which conflicts with the fixed five-domain Gate 3.5 contract
+    - the prompt scaffolding currently duplicates `system_prompt.md` for `ai_performance` and `escalation` by injecting it into the rendered user prompt and also sending it as a separate provider system message
+  - Review validation status:
+    - `python -m compileall app/core app/schemas app/services tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_prompt.py` passed
+    - `pytest tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_prompt.py tests/test_grading_parser.py -q` passed (`26 passed`)
+    - non-blocking environment note: pytest emitted `.pytest_cache` permission warnings in this workspace
+- Milestone 2 Phase 3.5 Gate 3.5 execution completed (`2026-03-09`) and tasks moved to `IN REVIEW`:
+  - `P2.35.1`: prompt-pack contract, legacy parity scope, and deterministic label-to-code merge strategy finalized in `docs/milestone-2/m2-phase-3.5.md`
+  - `P2.35.2`: no-migration decision documented for prompt externalization scope
+  - `P2.35.3`: prompt-pack settings + startup validation added in `app/core/config.py` with `.env.example` support for `GRADING_PROMPT_ASSETS_ROOT`
+  - `P2.35.4`: internal prompt manifest/spec and per-domain partial-output schemas added in `app/schemas/grading_prompts.py`
+  - `P2.35.5`: prompt-pack loader and prompt execution-plan scaffolding added in `app/services/grading_prompt_assets.py` and `app/services/grading_prompt.py`
+  - supporting scaffold assets added under `app/prompt_assets/grading/v1/`
+  - Gate 3.5 validation status:
+    - `python -m compileall app/core app/schemas app/services tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_prompt.py` passed
+    - `pytest tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_prompt.py tests/test_grading_parser.py -q` passed (`26 passed`)
+    - non-blocking environment note: pytest emitted `.pytest_cache` permission warnings in this workspace
 - Milestone 2 Phase 3.5 detailed plan created (`2026-03-09`):
   - phase doc added: `docs/milestone-2/m2-phase-3.5.md`
   - milestone overview updated: `docs/milestone-2/milestone-2.md`
@@ -18,10 +58,10 @@
     - one customer-day grade executes those five prompt-domain calls asynchronously in parallel
     - shared `system_prompt.md` with prompt-specific inclusion rules
     - strict merge back into canonical `GradingOutput`
-  - Kanban board check for planning:
-    - no `TODO` issues
-    - no `IN PROGRESS` issues
-    - per workflow, Kanban task creation remains deferred unless explicitly requested
+- Milestone 2 Phase 3.5 Kanban tasks created (`2026-03-09`):
+  - `P2.35.1` through `P2.35.16` created on project `aiva-dashboard-be`
+  - issue range: `EDA-100` through `EDA-115`
+  - issue descriptions include acceptance criteria, dependencies, expected file targets, and testing/validation requirements aligned to `docs/milestone-2/m2-phase-3.5.md`
 - Milestone 2 Phase 4 detailed plan created (`2026-03-09`):
   - phase doc added: `docs/milestone-2/m2-phase-4.md`
   - canonical checklist updated: `docs/tasks.md`
@@ -344,7 +384,7 @@
       - pre/post source table counts unchanged (`Arabia Insurance Chats=9090`, `usage_notifications=0`)
 
 ## Next Recommended Action
-- Create Milestone 2 Phase 3.5 Kanban tasks or begin Gate 3.5 execution.
+- Gate 3.5 is fully done; begin Stream A for Phase 3.5 prompt assets and loader implementation.
 
 ## Notes
 - Kanban MCP is reachable and synchronized with current execution state.

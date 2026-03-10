@@ -113,11 +113,147 @@
 | 3.5.5 | `P2.35.5 - Service - Scaffold prompt-pack loader and multi-prompt orchestration module boundaries - Gate (Dependent)` | Establish loader/builder/merger module boundaries without circular imports or working-directory coupling. | `P2.35.3`, `P2.35.4` | `app/services/grading_prompt_assets.py` (new), `app/services/grading_prompt.py`, `app/services/__init__.py` | Compile/import smoke check for new prompt-pack boundaries. |
 
 ### Gate 3.5 Acceptance Criteria
-- [ ] Prompt-pack structure, system-prompt inclusion rules, and merge strategy are explicit and versioned.
-- [ ] It is documented that no DB migration is required unless a later execution need proves otherwise.
-- [ ] Prompt-pack settings are validated at startup/config load.
-- [ ] Internal prompt-domain schema contracts exist for multi-prompt parsing and merge.
-- [ ] Service boundaries exist for file loading, prompt building, and merge orchestration.
+- [x] Prompt-pack structure, system-prompt inclusion rules, and merge strategy are explicit and versioned.
+- [x] It is documented that no DB migration is required unless a later execution need proves otherwise.
+- [x] Prompt-pack settings are validated at startup/config load.
+- [x] Internal prompt-domain schema contracts exist for multi-prompt parsing and merge.
+- [x] Service boundaries exist for file loading, prompt building, and merge orchestration.
+
+### P2.35.1 Decision Record - Prompt-Pack Contract, Legacy Parity Scope, and Merge Strategy
+
+#### Decision Summary
+- The active runtime prompt pack is versioned by `grading_prompt_version` and loaded from an app-owned directory:
+  - `app/prompt_assets/grading/<version>/`
+- Phase 3.5 preserves the legacy five-domain grading flow and prompt order exactly:
+  1. `ai_performance`
+  2. `conversation_health`
+  3. `user_signals`
+  4. `escalation`
+  5. `intent`
+- Prompt-domain execution will remain bounded:
+  - each domain owns only its declared output fields
+  - domain outputs merge into one canonical Phase 3 `GradingOutput`
+  - any missing/invalid domain output fails the whole grade before persistence
+
+#### Prompt-Pack File Contract
+- Required files for prompt pack version `<version>`:
+  - `system_prompt.md`
+  - `ai_performance_judge.md`
+  - `conversation_health.md`
+  - `user-signals.md`
+  - `escalation.md`
+  - `intent.md`
+- File names remain aligned to the legacy generator to minimize operational drift during the refactor.
+- Runtime code must not depend on repo-root prompt files or the current working directory.
+
+#### Prompt-Domain Contract
+
+| prompt_key | template_file | output_fields | include_system_prompt |
+|---|---|---|---|
+| `ai_performance` | `ai_performance_judge.md` | `relevancy_*`, `accuracy_*`, `completeness_*`, `clarity_*`, `tone_*` | `true` |
+| `conversation_health` | `conversation_health.md` | `resolution*`, `repetition_*`, `loop_detected*` | `false` |
+| `user_signals` | `user-signals.md` | `satisfaction_*`, `frustration_*`, `user_relevancy*` | `false` |
+| `escalation` | `escalation.md` | `escalation_occurred*`, `escalation_type*` | `true` |
+| `intent` | `intent.md` | `intent_label`, `intent_reasoning` | `false` |
+
+#### Placeholder and Validation Contract
+- Every prompt-domain markdown file must contain `{{conversation}}`.
+- `system_prompt.md` is raw content only and is injected by runtime code.
+- A prompt-domain template with `include_system_prompt = true` must contain `{{system_prompt}}`.
+- A prompt-domain template with `include_system_prompt = false` must not require `{{system_prompt}}`.
+- Unknown `{{placeholder}}` tokens are rejected during prompt-pack validation.
+
+#### Legacy Parity Scope
+- Legacy parity means preserving:
+  - the five prompt domains
+  - the prompt ordering
+  - the prompt-file names
+  - the selective `system_prompt.md` inclusion behavior
+- Legacy parity does not require preserving legacy weaknesses that conflict with the Phase 3 canonical write contract.
+- Prompt wording may be revised in the app-owned pack where needed to support strict parsing and canonical intent persistence.
+
+#### Canonical Merge Strategy
+- Merge order follows prompt order only for deterministic logging/debuggability; field ownership is non-overlapping.
+- Each prompt domain contributes only its declared output fields.
+- The merged payload must populate every field required by Phase 3 `GradingOutput`.
+- Final merged output is validated again as canonical `GradingOutput` before persistence.
+- One malformed/missing prompt-domain result fails the merged output and maps to the controlled parse-failure path.
+
+#### Intent Normalization Rule
+- The legacy `intent.md` prompt remains label-based in Phase 3.5 gate scope for parity with `generate_conversation_grades.py`.
+- Canonical runtime storage still requires `intent_code`, `intent_label`, and `intent_reasoning`.
+- Merge behavior:
+  - accept `intent_label` + `intent_reasoning` from the intent prompt
+  - normalize `intent_label` to canonical `intent_code` using a deterministic inverse label map
+  - reject the merge if the returned label is blank or outside the canonical label set
+- This keeps prompt structure aligned with the legacy script without weakening Phase 3 persistence rules.
+
+### P2.35.2 Validation Outcome - No Migration Required
+
+#### Validation Summary
+- Phase 3.5 is an internal prompt/runtime refactor only.
+- No new persisted grading fields are required to externalize prompt assets or introduce prompt-domain parsing/merge.
+- Existing canonical storage remains sufficient:
+  - `conversation_grades` continues to store the final merged grading result
+  - Phase 4 run-management planning can continue to treat prompt version as runtime metadata unless operational evidence requires persistence later
+
+#### Gate 3.5 DB Decision
+- No Alembic migration is required for Gate 3.5 or the broader Phase 3.5 prompt externalization scope.
+- Prompt-pack version, asset root, and prompt-domain execution metadata remain runtime-only in Phase 3.5.
+- If future operators require persisted prompt-version lineage on grade rows or run-history tables, that change is deferred to a later additive migration and is explicitly out of scope for this phase.
+
+#### Bounded Deferrals
+- Persisting prompt-pack version on `conversation_grades`: deferred.
+- Persisting per-domain raw prompt output or provider payloads: deferred.
+- Any schema work related to operational run history remains a Phase 4 concern, not a Phase 3.5 prerequisite.
+
+### Gate 3.5 Execution Notes (Completed `2026-03-09`; tasks moved to `IN REVIEW`)
+- `P2.35.1` completed:
+  - prompt-pack directory/version contract, placeholder rules, legacy parity scope, and label-to-code intent normalization were finalized in this phase doc
+  - milestone planning notes were synchronized in `docs/milestone-2/milestone-notes.md`
+- `P2.35.2` completed:
+  - no migration requirement was validated and documented
+  - prompt-pack metadata persistence remains explicitly deferred beyond Phase 3.5
+- `P2.35.3` completed:
+  - prompt-pack settings and startup validation added to `app/core/config.py`
+  - prompt-pack constants/export surface added under `app/core/constants.py` and `app/core/__init__.py`
+  - `.env.example` now includes `GRADING_PROMPT_ASSETS_ROOT`
+  - baseline versioned prompt-pack scaffold added under `app/prompt_assets/grading/v1/`
+- `P2.35.4` completed:
+  - internal prompt-pack manifest/spec schemas and per-domain partial-output schemas added in `app/schemas/grading_prompts.py`
+  - schema exports updated in `app/schemas/__init__.py`
+- `P2.35.5` completed:
+  - prompt-pack manifest/loader scaffolding added in `app/services/grading_prompt_assets.py`
+  - prompt execution-plan scaffolding added in `app/services/grading_prompt.py`
+  - provider transport now supports prompt bundles with or without a system message
+  - service exports updated in `app/services/__init__.py`
+- Validation:
+  - `python -m compileall app/core app/schemas app/services tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_prompt.py` passed
+  - `pytest tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_prompt.py tests/test_grading_parser.py -q` passed (`26 passed`)
+  - environment note: pytest emitted non-blocking warnings about this machine not being able to write `.pytest_cache`
+
+### Gate 3.5 Review Outcome (`2026-03-09`)
+- Approved and moved to `DONE`:
+  - `P2.35.1`
+  - `P2.35.2`
+- Kept in `IN REVIEW` for fixes:
+  - `P2.35.3`
+  - `P2.35.4`
+  - `P2.35.5`
+- Review findings:
+  - `build_grading_prompt()` still reports `GRADING_DEFAULT_PROMPT_VERSION` instead of the active prompt-pack version, so prompt metadata can drift from configuration
+  - `PromptPackManifest` validation currently accepts incomplete prompt-domain sets even though Gate 3.5 fixed the runtime contract at exactly five domains
+  - the current prompt scaffolding duplicates `system_prompt.md` for `ai_performance` and `escalation` by rendering it into the user prompt and also sending it as a provider system message
+
+### Gate 3.5 Rereview Outcome (`2026-03-10`)
+- Approved and moved to `DONE`:
+  - `P2.35.3`
+  - `P2.35.4`
+  - `P2.35.5`
+- Rereview outcomes:
+  - `build_grading_prompt()` now sources `prompt_version` from the active settings contract
+  - `PromptPackManifest` now requires the full fixed five-domain sequence, and schema tests reject incomplete manifests
+  - prompt execution plans now inject `system_prompt.md` through one channel only, and prompt tests confirm the previous duplication is gone
 
 ## Stream A - Prompt Assets and File Loader
 
@@ -260,8 +396,9 @@ Gate 3.5 (P2.35.1 - P2.35.5 prompt-pack contract + scaffolds) -------+
 - Phase 4 batch execution should wait for prompt-pack versioning to stabilize first.
 
 ### Open Questions
-- Should the runtime use the exact legacy markdown content verbatim first, or immediately create a revised versioned prompt pack that preserves structure but updates wording/contracts?
-- Should the intent prompt remain label-based with deterministic normalization, or should the prompt file itself be revised to emit canonical `intent_code` directly?
+- None currently. Gate 3.5 locked the initial runtime direction on `2026-03-09`:
+  - app-owned versioned prompt packs may revise wording where needed for strict canonical output
+  - the intent prompt remains label-based in the prompt pack, with deterministic label-to-code normalization during merge
 
 ## Estimated Duration (Units)
 - Gate 3.5 (`P2.35.1` - `P2.35.5`): `2.0`

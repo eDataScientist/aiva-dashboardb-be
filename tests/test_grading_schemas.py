@@ -4,6 +4,12 @@ import pytest
 from pydantic import ValidationError
 
 from app.schemas.grading import GradingOutput, GradingParseError
+from app.schemas.grading_prompts import (
+    PromptDomain,
+    PromptPackManifest,
+    PromptPackPartialOutputs,
+    PromptTemplateSpec,
+)
 
 
 def _valid_grading_output_payload() -> dict[str, object]:
@@ -84,3 +90,128 @@ def test_grading_parse_error_rejects_blank_message() -> None:
             code="invalid_json",
             message="   ",
         )
+
+
+def test_prompt_pack_manifest_accepts_ordered_unique_prompt_specs() -> None:
+    manifest = PromptPackManifest(
+        version="v1",
+        prompt_order=tuple(PromptDomain),
+        prompt_templates=(
+            PromptTemplateSpec(
+                prompt_key=PromptDomain.AI_PERFORMANCE,
+                template_file="ai_performance_judge.md",
+                output_fields=("relevancy_score",),
+                include_system_prompt=True,
+                required_placeholders=("conversation", "system_prompt"),
+            ),
+            PromptTemplateSpec(
+                prompt_key=PromptDomain.CONVERSATION_HEALTH,
+                template_file="conversation_health.md",
+                output_fields=("resolution",),
+                required_placeholders=("conversation",),
+            ),
+            PromptTemplateSpec(
+                prompt_key=PromptDomain.USER_SIGNALS,
+                template_file="user-signals.md",
+                output_fields=("satisfaction_score",),
+                required_placeholders=("conversation",),
+            ),
+            PromptTemplateSpec(
+                prompt_key=PromptDomain.ESCALATION,
+                template_file="escalation.md",
+                output_fields=("escalation_occurred",),
+                include_system_prompt=True,
+                required_placeholders=("conversation", "system_prompt"),
+            ),
+            PromptTemplateSpec(
+                prompt_key=PromptDomain.INTENT,
+                template_file="intent.md",
+                output_fields=("intent_label", "intent_reasoning"),
+                required_placeholders=("conversation",),
+            ),
+        ),
+    )
+
+    assert manifest.version == "v1"
+    assert manifest.prompt_templates[0].prompt_key == PromptDomain.AI_PERFORMANCE
+
+
+def test_prompt_pack_manifest_rejects_incomplete_prompt_domain_set() -> None:
+    with pytest.raises(ValidationError):
+        PromptPackManifest(
+            version="v1",
+            prompt_order=(PromptDomain.AI_PERFORMANCE, PromptDomain.INTENT),
+            prompt_templates=(
+                PromptTemplateSpec(
+                    prompt_key=PromptDomain.AI_PERFORMANCE,
+                    template_file="ai_performance_judge.md",
+                    output_fields=("relevancy_score",),
+                    include_system_prompt=True,
+                    required_placeholders=("conversation", "system_prompt"),
+                ),
+                PromptTemplateSpec(
+                    prompt_key=PromptDomain.INTENT,
+                    template_file="intent.md",
+                    output_fields=("intent_label", "intent_reasoning"),
+                    required_placeholders=("conversation",),
+                ),
+            ),
+        )
+
+
+def test_prompt_template_spec_rejects_missing_system_prompt_placeholder() -> None:
+    with pytest.raises(ValidationError):
+        PromptTemplateSpec(
+            prompt_key=PromptDomain.AI_PERFORMANCE,
+            template_file="ai_performance_judge.md",
+            output_fields=("relevancy_score",),
+            include_system_prompt=True,
+            required_placeholders=("conversation",),
+        )
+
+
+def test_prompt_pack_partial_outputs_require_all_domains() -> None:
+    payload = _valid_grading_output_payload()
+
+    partial_outputs = PromptPackPartialOutputs(
+        ai_performance={
+            "relevancy_score": payload["relevancy_score"],
+            "relevancy_reasoning": payload["relevancy_reasoning"],
+            "accuracy_score": payload["accuracy_score"],
+            "accuracy_reasoning": payload["accuracy_reasoning"],
+            "completeness_score": payload["completeness_score"],
+            "completeness_reasoning": payload["completeness_reasoning"],
+            "clarity_score": payload["clarity_score"],
+            "clarity_reasoning": payload["clarity_reasoning"],
+            "tone_score": payload["tone_score"],
+            "tone_reasoning": payload["tone_reasoning"],
+        },
+        conversation_health={
+            "resolution": payload["resolution"],
+            "resolution_reasoning": payload["resolution_reasoning"],
+            "repetition_score": payload["repetition_score"],
+            "repetition_reasoning": payload["repetition_reasoning"],
+            "loop_detected": payload["loop_detected"],
+            "loop_detected_reasoning": payload["loop_detected_reasoning"],
+        },
+        user_signals={
+            "satisfaction_score": payload["satisfaction_score"],
+            "satisfaction_reasoning": payload["satisfaction_reasoning"],
+            "frustration_score": payload["frustration_score"],
+            "frustration_reasoning": payload["frustration_reasoning"],
+            "user_relevancy": payload["user_relevancy"],
+            "user_relevancy_reasoning": payload["user_relevancy_reasoning"],
+        },
+        escalation={
+            "escalation_occurred": payload["escalation_occurred"],
+            "escalation_occurred_reasoning": payload["escalation_occurred_reasoning"],
+            "escalation_type": payload["escalation_type"],
+            "escalation_type_reasoning": payload["escalation_type_reasoning"],
+        },
+        intent={
+            "intent_label": payload["intent_label"],
+            "intent_reasoning": payload["intent_reasoning"],
+        },
+    )
+
+    assert partial_outputs.intent.intent_label == "Policy Inquiry"

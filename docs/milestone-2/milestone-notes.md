@@ -60,6 +60,12 @@ This document captures milestone-level planning decisions made during discussion
 - Keep the Phase 3 canonical grading persistence contract (`GradingOutput`) even if legacy markdown prompt wording needs revision.
 - Prefer an app-owned versioned prompt-pack directory over working-directory-dependent reads from repo-root markdown files.
 - Phase 4 batch execution should wait until this prompt-pack refactor is complete.
+- Gate 3.5 contract refinements:
+  - prompt-pack root: `app/prompt_assets/grading/<version>/`
+  - prompt order remains `ai_performance -> conversation_health -> user_signals -> escalation -> intent`
+  - `ai_performance` and `escalation` are the only initial prompt domains that inject `system_prompt.md`
+  - the legacy label-based `intent` prompt is retained for parity, but merge logic must normalize `intent_label` to canonical `intent_code` deterministically
+  - no DB migration is required for prompt externalization; prompt version remains runtime metadata in Phase 3.5
 
 ## Phase Ordering (High-Level)
 - Data contract and migrations should come before auth implementation.

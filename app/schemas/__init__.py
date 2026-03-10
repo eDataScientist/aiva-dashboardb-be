@@ -38,6 +38,17 @@ from app.schemas.grading import (
     GradingParseError,
     GradingParseErrorCode,
 )
+from app.schemas.grading_prompts import (
+    AIPerformancePromptOutput,
+    ConversationHealthPromptOutput,
+    EscalationPromptOutput,
+    IntentPromptOutput,
+    PromptDomain,
+    PromptPackManifest,
+    PromptPackPartialOutputs,
+    PromptTemplateSpec,
+    UserSignalsPromptOutput,
+)
 
 __all__ = [
     "AnalyticsFilterQuery",
@@ -68,4 +79,13 @@ __all__ = [
     "GradingOutput",
     "GradingParseError",
     "GradingParseErrorCode",
+    "AIPerformancePromptOutput",
+    "ConversationHealthPromptOutput",
+    "EscalationPromptOutput",
+    "IntentPromptOutput",
+    "PromptDomain",
+    "PromptPackManifest",
+    "PromptPackPartialOutputs",
+    "PromptTemplateSpec",
+    "UserSignalsPromptOutput",
 ]

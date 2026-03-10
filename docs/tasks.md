@@ -162,11 +162,11 @@ Last Updated: `2026-03-09` (Inserted Phase 3.5 prompt externalization plan befor
 
 ## Phase 3.5 - Prompt Externalization and Legacy Multi-Prompt Alignment
 ## Gate 3.5
-- [ ] `P2.35.1 - Design - Finalize prompt-pack contract, legacy parity scope, and merge strategy - Gate (Independent)`
-- [ ] `P2.35.2 - DB - Validate that no migration is required for prompt externalization scope - Gate (Dependent)` (`P2.35.1`)
-- [ ] `P2.35.3 - Config - Add prompt-pack settings and validation contract - Gate (Dependent)` (`P2.35.1`)
-- [ ] `P2.35.4 - API - Define internal prompt-spec and partial-output schemas - Gate (Dependent)` (`P2.35.1`)
-- [ ] `P2.35.5 - Service - Scaffold prompt-pack loader and multi-prompt orchestration module boundaries - Gate (Dependent)` (`P2.35.3`, `P2.35.4`)
+- [x] `P2.35.1 - Design - Finalize prompt-pack contract, legacy parity scope, and merge strategy - Gate (Independent)` - `DONE` (`docs/milestone-2/m2-phase-3.5.md`, `docs/milestone-2/milestone-notes.md`)
+- [x] `P2.35.2 - DB - Validate that no migration is required for prompt externalization scope - Gate (Dependent)` (`P2.35.1`) - `DONE` (`docs/milestone-2/m2-phase-3.5.md`, `docs/milestone-2/milestone-notes.md`)
+- [x] `P2.35.3 - Config - Add prompt-pack settings and validation contract - Gate (Dependent)` (`P2.35.1`) - `DONE` (`app/core/config.py`, `app/core/constants.py`, `app/core/__init__.py`, `.env.example`, `app/prompt_assets/grading/v1/*`, `tests/test_grading_config.py`)
+- [x] `P2.35.4 - API - Define internal prompt-spec and partial-output schemas - Gate (Dependent)` (`P2.35.1`) - `DONE` (`app/schemas/grading_prompts.py`, `app/schemas/__init__.py`, `tests/test_grading_schemas.py`)
+- [x] `P2.35.5 - Service - Scaffold prompt-pack loader and multi-prompt orchestration module boundaries - Gate (Dependent)` (`P2.35.3`, `P2.35.4`) - `DONE` (`app/services/grading_prompt_assets.py`, `app/services/grading_prompt.py`, `app/services/grading_provider.py`, `app/services/__init__.py`, `tests/test_grading_prompt.py`)
 
 ## Stream A (Prompt Assets and File Loader)
 - [ ] `P2.35.6 - Service - Externalize grading prompts into versioned markdown prompt-pack assets - Stream A (Dependent)` (`P2.35.5`)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
+from app.core.config import Settings
 from app.core.constants import GRADING_DEFAULT_PROMPT_VERSION
 from app.models.enums import IdentityType
 from app.services.grading_extraction import (
@@ -9,7 +10,7 @@ from app.services.grading_extraction import (
     CustomerDayTranscript,
     TranscriptMessage,
 )
-from app.services.grading_prompt import build_grading_prompt
+from app.services.grading_prompt import build_grading_prompt, build_prompt_execution_plan
 
 
 def _build_transcript() -> CustomerDayTranscript:
@@ -63,7 +64,6 @@ def _build_transcript() -> CustomerDayTranscript:
         ),
     )
 
-
 def test_build_grading_prompt_includes_contract_and_taxonomy() -> None:
     bundle = build_grading_prompt(_build_transcript())
 
@@ -85,3 +85,32 @@ def test_build_grading_prompt_serializes_transcript_context() -> None:
     assert "content=I need help with my motor policy renewal." in bundle.user_prompt
     assert "message_type=image" in bundle.user_prompt
     assert "content=[image attachment]" in bundle.user_prompt
+
+
+def test_build_grading_prompt_uses_active_settings_prompt_version() -> None:
+    settings = Settings.model_construct(grading_prompt_version="v-custom")
+    bundle = build_grading_prompt(_build_transcript(), settings=settings)
+
+    assert bundle.prompt_version == "v-custom"
+
+
+def test_build_prompt_execution_plan_uses_prompt_pack_manifest_order() -> None:
+    plan = build_prompt_execution_plan(_build_transcript())
+
+    assert plan.prompt_version == GRADING_DEFAULT_PROMPT_VERSION
+    assert [bundle.prompt_key for bundle in plan.bundles] == [
+        "ai_performance",
+        "conversation_health",
+        "user_signals",
+        "escalation",
+        "intent",
+    ]
+    assert plan.bundles[0].system_prompt is None
+    assert plan.bundles[1].system_prompt is None
+    assert plan.bundles[3].system_prompt is None
+    assert "{{conversation}}" not in plan.bundles[0].user_prompt
+    assert "{{system_prompt}}" not in plan.bundles[0].user_prompt
+    assert plan.bundles[0].user_prompt.count(
+        "You are the internal Arabia Insurance AI grading judge."
+    ) == 1
+    assert "You are the internal Arabia Insurance AI grading judge." not in plan.bundles[1].user_prompt

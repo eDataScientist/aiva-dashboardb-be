@@ -32,7 +32,18 @@ from app.services.grading_pipeline import (
     build_grading_pipeline_dependencies,
     grade_customer_day,
 )
-from app.services.grading_prompt import PromptBundle, build_grading_prompt
+from app.services.grading_prompt import (
+    PromptBundle,
+    PromptExecutionPlan,
+    build_grading_prompt,
+    build_prompt_execution_plan,
+)
+from app.services.grading_prompt_assets import (
+    GradingPromptAssetError,
+    LoadedPromptPack,
+    build_prompt_pack_manifest,
+    load_prompt_pack,
+)
 from app.services.grading_provider import (
     GradingProviderError,
     GradingProviderRequest,
@@ -50,10 +61,13 @@ __all__ = [
     "GradeCustomerDaySuccess",
     "GradingParseFailure",
     "GradingPipelineDependencies",
+    "GradingPromptAssetError",
     "GradingProviderError",
     "GradingProviderRequest",
+    "LoadedPromptPack",
     "ParsedGradingResult",
     "PromptBundle",
+    "PromptExecutionPlan",
     "TranscriptMessage",
     "assemble_customer_day_transcript",
     "authenticate_account",
@@ -61,12 +75,15 @@ __all__ = [
     "build_grading_pipeline_dependencies",
     "build_customer_day_messages_stmt",
     "build_grading_prompt",
+    "build_prompt_execution_plan",
+    "build_prompt_pack_manifest",
     "build_grading_provider",
     "canonical_identity_type_expr",
     "canonical_identity_value_expr",
     "grade_customer_day",
     "gst_grade_date_expr",
     "list_customer_day_candidates",
+    "load_prompt_pack",
     "parse_grading_output",
     "resolve_canonical_identity",
     "to_account_context",

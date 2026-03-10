@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
+import re
 
 from pydantic import Field, ValidationError, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -8,6 +10,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from app.core.constants import (
     GRADING_DEFAULT_MODEL,
     GRADING_DEFAULT_PROMPT_VERSION,
+    GRADING_PROMPT_DOMAIN_ORDER,
+    GRADING_PROMPT_DOMAIN_SYSTEM_PROMPT_KEYS,
+    GRADING_PROMPT_DOMAIN_TO_TEMPLATE_FILE,
+    GRADING_PROMPT_PACK_BASE_DIR,
+    GRADING_PROMPT_REQUIRED_FILES,
+    GRADING_PROMPT_SYSTEM_PROMPT_FILE,
     GRADING_PROVIDER_OPENAI_COMPATIBLE,
     GRADING_SUPPORTED_PROVIDERS,
 )
@@ -20,6 +28,7 @@ _SUPPORTED_DATABASE_PREFIXES = (
 )
 
 _SUPPORTED_JWT_ALGORITHMS = {"HS256", "HS384", "HS512"}
+_PROMPT_PLACEHOLDER_PATTERN = re.compile(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}")
 
 
 class Settings(BaseSettings):
@@ -75,6 +84,13 @@ class Settings(BaseSettings):
     grading_prompt_version: str = Field(
         default=GRADING_DEFAULT_PROMPT_VERSION,
         description="Prompt contract version used by the grading pipeline.",
+    )
+    grading_prompt_assets_root: str | None = Field(
+        default=None,
+        description=(
+            "Optional base directory override containing versioned grading prompt-pack "
+            "assets."
+        ),
     )
     grading_api_key: str | None = Field(
         default=None,
@@ -158,6 +174,14 @@ class Settings(BaseSettings):
             raise ValueError(f"{info.field_name.upper()} must not be empty.")
         return normalized
 
+    @field_validator("grading_prompt_assets_root")
+    @classmethod
+    def normalize_grading_prompt_assets_root(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
     @field_validator("grading_request_timeout_seconds")
     @classmethod
     def validate_grading_request_timeout_seconds(cls, value: int) -> int:
@@ -198,7 +222,25 @@ class Settings(BaseSettings):
                 "GRADING_API_KEY is required when GRADING_PROVIDER is "
                 "'openai_compatible'."
             )
+        _validate_prompt_pack_assets(
+            root_dir=self.resolved_grading_prompt_assets_dir,
+            version=self.grading_prompt_version,
+        )
         return self
+
+    @property
+    def resolved_grading_prompt_assets_base_dir(self) -> Path:
+        if self.grading_prompt_assets_root is None:
+            return _project_root() / GRADING_PROMPT_PACK_BASE_DIR
+
+        configured_root = Path(self.grading_prompt_assets_root)
+        if not configured_root.is_absolute():
+            configured_root = _project_root() / configured_root
+        return configured_root
+
+    @property
+    def resolved_grading_prompt_assets_dir(self) -> Path:
+        return self.resolved_grading_prompt_assets_base_dir / self.grading_prompt_version
 
 
 @lru_cache(maxsize=1)
@@ -211,3 +253,68 @@ def get_settings() -> Settings:
             "AUTH_JWT_ALGORITHM, AUTH_ACCESS_TOKEN_EXPIRE_MINUTES, and GRADING_* "
             "settings are valid."
         ) from exc
+
+
+def _project_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _validate_prompt_pack_assets(*, root_dir: Path, version: str) -> None:
+    if not root_dir.exists() or not root_dir.is_dir():
+        raise ValueError(
+            "GRADING_PROMPT_VERSION points to a missing prompt-pack directory: "
+            f"{root_dir}"
+        )
+
+    missing_files = [
+        file_name for file_name in GRADING_PROMPT_REQUIRED_FILES if not (root_dir / file_name).is_file()
+    ]
+    if missing_files:
+        raise ValueError(
+            "Prompt pack is missing required files for version "
+            f"'{version}': {', '.join(missing_files)}"
+        )
+
+    system_prompt_text = (root_dir / GRADING_PROMPT_SYSTEM_PROMPT_FILE).read_text(
+        encoding="utf-8"
+    )
+    system_prompt_placeholders = _extract_prompt_placeholders(system_prompt_text)
+    if system_prompt_placeholders:
+        raise ValueError(
+            "system_prompt.md must not declare template placeholders. Found: "
+            + ", ".join(sorted(system_prompt_placeholders))
+        )
+
+    for prompt_key in GRADING_PROMPT_DOMAIN_ORDER:
+        file_name = GRADING_PROMPT_DOMAIN_TO_TEMPLATE_FILE[prompt_key]
+        template_text = (root_dir / file_name).read_text(encoding="utf-8")
+        placeholders = _extract_prompt_placeholders(template_text)
+
+        if "conversation" not in placeholders:
+            raise ValueError(
+                f"{file_name} must contain the {{conversation}} placeholder."
+            )
+
+        requires_system_prompt = prompt_key in GRADING_PROMPT_DOMAIN_SYSTEM_PROMPT_KEYS
+        if requires_system_prompt and "system_prompt" not in placeholders:
+            raise ValueError(
+                f"{file_name} must contain the {{system_prompt}} placeholder."
+            )
+        if not requires_system_prompt and "system_prompt" in placeholders:
+            raise ValueError(
+                f"{file_name} must not contain the {{system_prompt}} placeholder."
+            )
+
+        allowed_placeholders = {"conversation"}
+        if requires_system_prompt:
+            allowed_placeholders.add("system_prompt")
+        unexpected_placeholders = placeholders - allowed_placeholders
+        if unexpected_placeholders:
+            raise ValueError(
+                f"{file_name} contains unsupported placeholders: "
+                + ", ".join(sorted(unexpected_placeholders))
+            )
+
+
+def _extract_prompt_placeholders(template_text: str) -> set[str]:
+    return {match.group(1).strip() for match in _PROMPT_PLACEHOLDER_PATTERN.finditer(template_text)}
