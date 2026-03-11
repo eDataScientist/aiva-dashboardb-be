@@ -264,10 +264,24 @@
 | A.3 | `P2.35.8 - Test - Add prompt-pack loader and asset integrity tests - Stream A (Dependent)` | Add deterministic coverage for asset discovery, placeholder validation, and version selection. | `P2.35.7` | `tests/test_grading_prompt_assets.py` (new) | `pytest tests/test_grading_prompt_assets.py -q`. |
 
 ### Stream A Acceptance Criteria
-- [ ] Runtime prompt assets live in a versioned app-owned directory, not a hardcoded inline string.
-- [ ] Loader resolves the active prompt pack deterministically without depending on the current working directory.
-- [ ] Required markdown files and placeholders are validated before execution.
-- [ ] Stream A tests cover asset integrity and failure modes.
+- [x] Runtime prompt assets live in a versioned app-owned directory, not a hardcoded inline string.
+- [x] Loader resolves the active prompt pack deterministically without depending on the current working directory.
+- [x] Required markdown files and placeholders are validated before execution.
+- [x] Stream A tests cover asset integrity and failure modes.
+
+### Stream A Review Outcome (`2026-03-11`)
+- Approved and moved to `DONE`:
+  - `P2.35.6`
+  - `P2.35.7`
+  - `P2.35.8`
+- Review outcomes:
+  - the app-owned `app/prompt_assets/grading/v1/` pack now preserves the legacy five-domain prompt structure in a version-scoped runtime location
+  - `load_prompt_pack()` now calls the shared prompt-pack validator before reads, so loader usage still enforces required-file and placeholder rules when config validation is bypassed
+  - asset-focused tests now cover repository-backed prompt-pack loading, missing required files, and unsupported placeholder failures without relying on writable temp directories
+- Review validation:
+  - `python -m compileall app/core/config.py app/services/grading_prompt_assets.py tests/test_grading_prompt.py tests/test_grading_prompt_assets.py` passed
+  - `pytest tests/test_grading_config.py tests/test_grading_prompt.py tests/test_grading_prompt_assets.py -q` passed (`12 passed`)
+  - environment note: pytest emitted non-blocking `.pytest_cache` permission warnings in this workspace
 
 ## Stream B - Multi-Prompt Build, Parse, and Canonical Merge
 
@@ -278,12 +292,53 @@
 | B.3 | `P2.35.11 - Test - Add deterministic multi-prompt parse and merge contract tests - Stream B (Dependent)` | Add coverage for successful five-prompt merge and controlled failure behavior when one prompt returns malformed output. | `P2.35.10` | `tests/test_grading_parser.py`, `tests/test_grading_prompt.py` | `pytest tests/test_grading_prompt.py tests/test_grading_parser.py -q`. |
 
 ### Stream B Acceptance Criteria
-- [ ] Prompt generation follows the same five logical prompt domains as the legacy script.
-- [ ] One customer-day grade executes exactly five async prompt calls in parallel before merge.
-- [ ] Partial outputs are validated at the prompt-domain level before final merge.
-- [ ] Final merge still produces canonical Phase 3 `GradingOutput`.
-- [ ] One prompt-domain failure maps cleanly to a controlled parser/provider failure path.
-- [ ] Stream B tests cover both success and prompt-specific failure cases.
+- [x] Prompt generation follows the same five logical prompt domains as the legacy script.
+- [x] One customer-day grade executes exactly five async prompt calls in parallel before merge.
+- [x] Partial outputs are validated at the prompt-domain level before final merge.
+- [x] Final merge still produces canonical Phase 3 `GradingOutput`.
+- [x] One prompt-domain failure maps cleanly to a controlled parser/provider failure path.
+- [x] Stream B tests cover both success and prompt-specific failure cases.
+
+### Stream B Execution Notes (Completed `2026-03-11`; tasks moved to `IN REVIEW`)
+- `P2.35.9` completed:
+  - `build_prompt_execution_plan()` now emits stable per-domain prompt bundles in legacy order with explicit `prompt_domain`, `template_file`, `include_system_prompt`, `output_fields`, and `prompt_sequence` metadata for downstream executor/provider consumers
+  - prompt-plan metadata now records bundle count and prompt order for deterministic logging/debuggability
+- `P2.35.10` completed:
+  - `parse_prompt_domain_output()` now validates each prompt-domain response against its bounded partial-output schema
+  - `parse_prompt_execution_results()` now enforces the full five-domain result set and merges validated partial outputs into canonical Phase 3 `GradingOutput`
+  - label-only `intent` prompt output now normalizes to canonical `intent_code` via case/whitespace-insensitive label mapping while preserving canonical display labels in the merged output
+- `P2.35.11` completed:
+  - prompt/parser regression coverage now verifies prompt-plan metadata, successful five-domain merge, missing prompt-domain failures, prompt-domain-scoped validation errors, and unsupported intent-label failures
+- Validation:
+  - `python -m compileall app/schemas/grading_prompts.py app/services/grading_prompt.py app/services/grading_parser.py app/services/__init__.py tests/test_grading_prompt.py tests/test_grading_parser.py` passed
+  - `pytest tests/test_grading_prompt.py tests/test_grading_parser.py tests/test_grading_schemas.py -q` passed (`28 passed`)
+  - environment note: pytest emitted non-blocking `.pytest_cache` permission warnings in this workspace
+
+### Stream B Review Outcome (`2026-03-11`)
+- Approved and moved to `DONE`:
+  - `P2.35.9`
+- Kept in `IN REVIEW` for fixes:
+  - `P2.35.10`
+  - `P2.35.11`
+- Review findings:
+  - `_normalize_prompt_domain_outputs()` still converts mapping keys with a bare `PromptDomain(prompt_key)` call, so `parse_prompt_execution_results({"unsupported": "{}"})` leaks raw `ValueError` instead of the controlled `GradingParseFailure` contract expected by downstream orchestration
+  - Stream B tests cover supported-domain success/failure paths but do not yet lock in the unsupported mapping-key failure path
+- Review validation:
+  - `python -m compileall app/schemas/grading_prompts.py app/services/grading_prompt.py app/services/grading_parser.py app/services/__init__.py tests/test_grading_prompt.py tests/test_grading_parser.py` passed
+  - `pytest tests/test_grading_prompt.py tests/test_grading_parser.py tests/test_grading_schemas.py -q` passed (`28 passed`)
+  - direct repro confirmed `parse_prompt_execution_results({"unsupported": "{}"})` raises `ValueError`
+
+### Stream B Rereview Outcome (`2026-03-11`)
+- Approved and moved to `DONE`:
+  - `P2.35.10`
+  - `P2.35.11`
+- Rereview outcomes:
+  - `_normalize_prompt_domain_outputs()` now converts unsupported mapping keys into controlled `GradingParseFailure` with `FIELD_VALIDATION_ERROR`
+  - parser regression coverage now includes the unsupported prompt-domain mapping-key case discovered in the first review
+- Rereview validation:
+  - `python -m compileall app/schemas/grading_prompts.py app/services/grading_prompt.py app/services/grading_parser.py app/services/__init__.py tests/test_grading_prompt.py tests/test_grading_parser.py` passed
+  - `pytest tests/test_grading_prompt.py tests/test_grading_parser.py tests/test_grading_schemas.py -q` passed (`29 passed`)
+  - direct repro confirmed `parse_prompt_execution_results({"unsupported": "{}"})` now returns controlled parser failure semantics
 
 ## Stream C - Pipeline Integration and Runtime Compatibility
 
@@ -294,10 +349,39 @@
 | C.3 | `P2.35.14 - Test - Add end-to-end grading pipeline tests for file-based multi-prompt execution - Stream C (Dependent)` | Add deterministic end-to-end coverage for prompt-pack-driven grading from transcript to persisted canonical grade. | `P2.35.13` | `tests/test_grading_pipeline.py`, `tests/conftest.py` (if fixture extensions are needed) | `pytest tests/test_grading_pipeline.py -q`. |
 
 ### Stream C Acceptance Criteria
-- [ ] `grade_customer_day()` uses the file-based multi-prompt path instead of the inline single prompt.
-- [ ] Mock and external provider adapters remain compatible with the new prompt execution model.
-- [ ] The explicit `EMPTY_TRANSCRIPT` / `PROVIDER_ERROR` / `PARSE_ERROR` contract remains unchanged at the pipeline boundary.
-- [ ] Stream C tests cover runtime behavior end to end.
+- [x] `grade_customer_day()` uses the file-based multi-prompt path instead of the inline single prompt.
+- [x] Mock and external provider adapters remain compatible with the new prompt execution model.
+- [x] The explicit `EMPTY_TRANSCRIPT` / `PROVIDER_ERROR` / `PARSE_ERROR` contract remains unchanged at the pipeline boundary.
+- [x] Stream C tests cover runtime behavior end to end.
+
+### Stream C Execution Notes (Completed `2026-03-11`; tasks moved to `IN REVIEW`)
+- `P2.35.12` completed:
+  - `grade_customer_day()` now builds the file-based five-prompt execution plan and executes the five prompt bundles concurrently before merging them through `parse_prompt_execution_results()`
+  - pipeline success/failure results now carry prompt-plan and per-bundle raw-output context while preserving the existing in-band `EMPTY_TRANSCRIPT` / `PROVIDER_ERROR` / `PARSE_ERROR` contract
+- `P2.35.13` completed:
+  - the default mock provider path now returns bounded prompt-domain payloads for prompt-pack bundles and still preserves the legacy full-grade fallback for the older single-prompt contract
+  - provider contract coverage now verifies prompt key, prompt version, template file, and execution sequence metadata across the five prompt domains
+- `P2.35.14` completed:
+  - grading pipeline tests now cover prompt-pack success, provider failure, parse failure without partial writes, empty-transcript short-circuiting, and idempotent rerun overwrite behavior
+- Validation:
+  - `python -m compileall app/services/grading_pipeline.py app/services/grading_provider.py app/services/grading_parser.py tests/test_grading_pipeline.py tests/test_grading_parser.py` passed
+  - `pytest tests/test_grading_prompt.py tests/test_grading_parser.py -q` passed (`21 passed`)
+  - sandboxed `pytest tests/test_grading_prompt.py tests/test_grading_parser.py tests/test_grading_pipeline.py -q` hit the expected Docker npipe permission blocker in `tests/test_grading_pipeline.py` (`CreateFile Access is denied`)
+  - unrestricted `pytest tests/test_grading_pipeline.py -q` passed (`7 passed`)
+
+### Stream C Review Outcome (`2026-03-11`)
+- Approved and moved to `DONE`:
+  - `P2.35.12`
+  - `P2.35.13`
+  - `P2.35.14`
+- Review outcomes:
+  - `grade_customer_day()` now executes the file-based five-prompt plan end to end while preserving the explicit in-band failure-result contract required by downstream Phase 4 consumers
+  - the provider runtime remains compatible with prompt-pack execution and still preserves the older single-prompt fallback path for legacy callers/tests
+  - pipeline coverage now locks in prompt-pack success, provider failure, parse failure without partial writes, empty-transcript short-circuiting, and rerun overwrite behavior
+- Review validation:
+  - `python -m compileall app/services/grading_pipeline.py app/services/grading_provider.py app/services/grading_parser.py tests/test_grading_pipeline.py tests/test_grading_parser.py` passed
+  - `pytest tests/test_grading_prompt.py tests/test_grading_parser.py -q` passed (`21 passed`)
+  - `pytest tests/test_grading_pipeline.py -q` passed (`7 passed`)
 
 ## Stream D - Validation, Docs, and Phase 4 Handoff
 
@@ -307,9 +391,35 @@
 | D.2 | `P2.35.16 - Docs - Update task/progress docs and Phase 4 dependency notes after prompt refactor - Stream D (Dependent)` | Sync docs after execution/review and confirm that Phase 4 batch execution now depends on the externalized prompt-pack path. | `P2.35.15` | `docs/tasks.md`, `docs/project-progress.md`, `docs/milestone-2/m2-phase-3.5.md`, `docs/milestone-2/m2-phase-4.md` | Documentation review for status consistency and handoff readiness. |
 
 ### Stream D Acceptance Criteria
-- [ ] Compile checks pass for modified Python modules.
-- [ ] Targeted prompt/parser/pipeline tests pass or any environment blocker is explicitly documented.
-- [ ] Docs are synchronized with the refactor outcome and Phase 4 dependency state.
+- [x] Compile checks pass for modified Python modules.
+- [x] Targeted prompt/parser/pipeline tests pass or any environment blocker is explicitly documented.
+- [x] Docs are synchronized with the refactor outcome and Phase 4 dependency state.
+
+### Stream D Execution Notes (Completed `2026-03-11`; tasks moved to `IN REVIEW`)
+- `P2.35.15` completed:
+  - `python -m compileall app tests` passed for the prompt-pack refactor scope
+  - sandboxed targeted grading validation reached `39 passed` before the expected Docker/Testcontainers npipe blocker in `tests/test_grading_pipeline.py`
+  - unrestricted `pytest tests/test_grading_pipeline.py -q` passed (`7 passed`)
+- `P2.35.16` completed:
+  - `docs/tasks.md`, `docs/project-progress.md`, `docs/milestone-2/m2-phase-3.5.md`, and `docs/milestone-2/m2-phase-4.md` were synchronized with Stream D execution outcomes
+  - Phase 4 dependency notes now explicitly require the validated file-based multi-prompt runtime instead of the retired inline prompt path
+- Validation:
+  - `python -m compileall app tests` passed
+  - sandboxed `pytest tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_prompt_assets.py tests/test_grading_prompt.py tests/test_grading_parser.py tests/test_grading_pipeline.py -q` reached `39 passed` before the expected Docker/Testcontainers npipe blocker in `tests/test_grading_pipeline.py` (`CreateFile Access is denied`)
+  - unrestricted `pytest tests/test_grading_pipeline.py -q` passed (`7 passed`)
+
+### Stream D Review Outcome (`2026-03-11`)
+- Approved and moved to `DONE`:
+  - `P2.35.15`
+  - `P2.35.16`
+- Review outcomes:
+  - compile coverage plus targeted config/schema/prompt/parser/pipeline validation are sufficient to close the prompt-pack refactor phase
+  - the remaining Docker/Testcontainers failure mode is confirmed to be sandbox-specific and does not block Phase 4 execution
+  - project docs and Phase 4 dependency notes now consistently point downstream work at the validated file-based multi-prompt runtime
+- Review validation:
+  - `python -m compileall app tests` passed
+  - sandboxed `pytest tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_prompt_assets.py tests/test_grading_prompt.py tests/test_grading_parser.py tests/test_grading_pipeline.py -q` reached `39 passed` before the expected Docker/Testcontainers npipe blocker in `tests/test_grading_pipeline.py` (`CreateFile Access is denied`)
+  - unrestricted `pytest tests/test_grading_pipeline.py -q` passed (`7 passed`)
 
 ## Suggested Files by Concern
 - Prompt assets:
@@ -346,7 +456,7 @@
 - Stream B depends on Stream A to build per-domain prompts from the asset pack and merge prompt-domain outputs.
 - Stream C depends on Stream B because pipeline orchestration should integrate the real multi-prompt path, not a placeholder.
 - Stream D validates and documents the prompt refactor before Phase 4 execution begins.
-- Phase 4 remains blocked until Stream D completes.
+- Phase 4 is unblocked now that Stream D is complete.
 
 ## Parallelization Map
 
@@ -365,13 +475,13 @@ Gate 3.5 (P2.35.1 - P2.35.5 prompt-pack contract + scaffolds) -------+
 ```
 
 ## Definition of Done (Phase 3.5)
-- [ ] Runtime grading prompts are externalized into versioned markdown assets.
-- [ ] The grading pipeline follows a five-domain prompt flow aligned to the legacy generator structure.
-- [ ] Prompt parsing and merge still produce canonical Phase 3 `GradingOutput`.
-- [ ] Prompt versioning and prompt asset validation are deterministic and startup/test safe.
-- [ ] The explicit pipeline failure-result contract remains unchanged.
-- [ ] Targeted prompt/parser/pipeline tests exist and pass for modified scope.
-- [ ] No lint/syntax errors exist in modified Python modules.
+- [x] Runtime grading prompts are externalized into versioned markdown assets.
+- [x] The grading pipeline follows a five-domain prompt flow aligned to the legacy generator structure.
+- [x] Prompt parsing and merge still produce canonical Phase 3 `GradingOutput`.
+- [x] Prompt versioning and prompt asset validation are deterministic and startup/test safe.
+- [x] The explicit pipeline failure-result contract remains unchanged.
+- [x] Targeted prompt/parser/pipeline tests exist and pass for modified scope.
+- [x] No lint/syntax errors exist in modified Python modules.
 
 ## Test Scenarios (Phase 3.5 Validation)
 

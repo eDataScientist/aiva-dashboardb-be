@@ -95,7 +95,8 @@
 
 ## Upstream Note
 - Phase 4 execution is intentionally downstream of the inserted Phase 3.5 prompt externalization/refactor.
-- Batch/run-management work should assume the file-based multi-prompt grading path from Phase 3.5, not the older single hardcoded prompt implementation.
+- Phase 3.5 review completed on `2026-03-11`, validating the prompt-pack runtime with clean compile results plus targeted prompt/config/parser/pipeline coverage and confirming the remaining pipeline-suite blocker is sandbox-only Docker/Testcontainers access.
+- Batch/run-management work should assume the validated file-based multi-prompt grading path from Phase 3.5, not the older single hardcoded prompt implementation.
 
 ## Phase 4 Contract Outline (Planning Baseline)
 

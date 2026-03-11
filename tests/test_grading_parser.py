@@ -9,13 +9,23 @@ from app.core.config import Settings
 from app.core.constants import GRADING_DEFAULT_MODEL, GRADING_DEFAULT_PROMPT_VERSION
 from app.models.enums import IdentityType
 from app.schemas.grading import GradingParseErrorCode
-from app.services.grading_parser import GradingParseFailure, parse_grading_output
+from app.schemas.grading_prompts import PromptDomain
+from app.services.grading_parser import (
+    GradingParseFailure,
+    parse_grading_output,
+    parse_prompt_domain_output,
+    parse_prompt_execution_results,
+)
 from app.services.grading_extraction import (
     CustomerDayCandidate,
     CustomerDayTranscript,
     TranscriptMessage,
 )
-from app.services.grading_prompt import PromptBundle, build_grading_prompt
+from app.services.grading_prompt import (
+    PromptBundle,
+    build_grading_prompt,
+    build_prompt_execution_plan,
+)
 from app.services.grading_provider import (
     GradingProviderError,
     GradingProviderRequest,
@@ -73,6 +83,50 @@ def _provider_request(mock_response: str | None = None) -> GradingProviderReques
         timeout_seconds=5,
         max_retries=2,
     )
+
+
+def _partial_provider_payloads() -> dict[str, dict[str, object]]:
+    payload = _valid_provider_payload()
+    return {
+        "ai_performance": {
+            "relevancy_score": payload["relevancy_score"],
+            "relevancy_reasoning": payload["relevancy_reasoning"],
+            "accuracy_score": payload["accuracy_score"],
+            "accuracy_reasoning": payload["accuracy_reasoning"],
+            "completeness_score": payload["completeness_score"],
+            "completeness_reasoning": payload["completeness_reasoning"],
+            "clarity_score": payload["clarity_score"],
+            "clarity_reasoning": payload["clarity_reasoning"],
+            "tone_score": payload["tone_score"],
+            "tone_reasoning": payload["tone_reasoning"],
+        },
+        "conversation_health": {
+            "resolution": payload["resolution"],
+            "resolution_reasoning": payload["resolution_reasoning"],
+            "repetition_score": payload["repetition_score"],
+            "repetition_reasoning": payload["repetition_reasoning"],
+            "loop_detected": payload["loop_detected"],
+            "loop_detected_reasoning": payload["loop_detected_reasoning"],
+        },
+        "user_signals": {
+            "satisfaction_score": payload["satisfaction_score"],
+            "satisfaction_reasoning": payload["satisfaction_reasoning"],
+            "frustration_score": payload["frustration_score"],
+            "frustration_reasoning": payload["frustration_reasoning"],
+            "user_relevancy": payload["user_relevancy"],
+            "user_relevancy_reasoning": payload["user_relevancy_reasoning"],
+        },
+        "escalation": {
+            "escalation_occurred": payload["escalation_occurred"],
+            "escalation_occurred_reasoning": payload["escalation_occurred_reasoning"],
+            "escalation_type": payload["escalation_type"],
+            "escalation_type_reasoning": payload["escalation_type_reasoning"],
+        },
+        "intent": {
+            "intent_label": payload["intent_label"],
+            "intent_reasoning": payload["intent_reasoning"],
+        },
+    }
 
 
 def _settings(*, grading_provider: str, grading_api_key: str | None = None) -> Settings:
@@ -165,6 +219,97 @@ def test_parse_grading_output_rejects_intent_label_mismatch() -> None:
     assert exc_info.value.error.code == GradingParseErrorCode.INTENT_LABEL_MISMATCH
 
 
+def test_parse_prompt_domain_output_accepts_bounded_domain_payload() -> None:
+    payload = _partial_provider_payloads()
+
+    result = parse_prompt_domain_output(
+        PromptDomain.AI_PERFORMANCE,
+        json.dumps(payload["ai_performance"]),
+    )
+
+    assert result.prompt_key is PromptDomain.AI_PERFORMANCE
+    assert result.output.relevancy_score == 8
+
+
+def test_parse_prompt_execution_results_merges_partial_outputs() -> None:
+    payload = _partial_provider_payloads()
+    payload["intent"]["intent_label"] = "  policy inquiry  "
+
+    result = parse_prompt_execution_results(
+        {
+            prompt_key: json.dumps(prompt_payload)
+            for prompt_key, prompt_payload in payload.items()
+        }
+    )
+
+    assert [domain_result.prompt_key.value for domain_result in result.domain_results] == [
+        "ai_performance",
+        "conversation_health",
+        "user_signals",
+        "escalation",
+        "intent",
+    ]
+    assert result.partial_outputs.intent.intent_label == "  policy inquiry  "
+    assert result.output.intent_code == "policy_inquiry"
+    assert result.output.intent_label == "Policy Inquiry"
+    assert result.output.repetition_score == 8
+
+
+def test_merge_prompt_pack_outputs_rejects_unknown_intent_label() -> None:
+    payload = _partial_provider_payloads()
+    payload["intent"]["intent_label"] = "Unmapped label"
+
+    with pytest.raises(GradingParseFailure) as exc_info:
+        parse_prompt_execution_results(
+            {
+                prompt_key: json.dumps(prompt_payload)
+                for prompt_key, prompt_payload in payload.items()
+            }
+        )
+
+    assert exc_info.value.error.code == GradingParseErrorCode.INTENT_LABEL_MISMATCH
+
+
+def test_parse_prompt_execution_results_rejects_missing_prompt_domain() -> None:
+    payload = _partial_provider_payloads()
+    payload.pop("intent")
+
+    with pytest.raises(GradingParseFailure) as exc_info:
+        parse_prompt_execution_results(
+            {
+                prompt_key: json.dumps(prompt_payload)
+                for prompt_key, prompt_payload in payload.items()
+            }
+        )
+
+    assert exc_info.value.error.code == GradingParseErrorCode.MISSING_REQUIRED_FIELD
+    assert "intent: Missing prompt-domain output." in exc_info.value.error.details
+
+
+def test_parse_prompt_execution_results_rejects_unsupported_mapping_key() -> None:
+    with pytest.raises(GradingParseFailure) as exc_info:
+        parse_prompt_execution_results({"unsupported": "{}"})
+
+    assert exc_info.value.error.code == GradingParseErrorCode.FIELD_VALIDATION_ERROR
+    assert exc_info.value.error.details == ["prompt_key: unsupported"]
+
+
+def test_parse_prompt_execution_results_prefixes_domain_validation_errors() -> None:
+    payload = _partial_provider_payloads()
+    payload["escalation"].pop("escalation_type_reasoning")
+
+    with pytest.raises(GradingParseFailure) as exc_info:
+        parse_prompt_execution_results(
+            {
+                prompt_key: json.dumps(prompt_payload)
+                for prompt_key, prompt_payload in payload.items()
+            }
+        )
+
+    assert exc_info.value.error.code == GradingParseErrorCode.MISSING_REQUIRED_FIELD
+    assert "escalation.escalation_type_reasoning" in exc_info.value.error.details[0]
+
+
 @pytest.mark.asyncio
 async def test_build_grading_provider_reads_default_mock_response_from_metadata() -> None:
     provider = build_grading_provider(settings=_settings(grading_provider="mock"))
@@ -194,6 +339,37 @@ async def test_build_grading_provider_supports_real_prompt_builder_output_with_d
     assert parsed.output.intent_code == "general_inquiry"
     assert parsed.output.intent_label == "General Inquiry"
     assert "+971500000001" in parsed.output.intent_reasoning
+
+
+@pytest.mark.asyncio
+async def test_build_grading_provider_supports_prompt_pack_execution_with_default_mock_path() -> None:
+    provider = build_grading_provider(settings=_settings(grading_provider="mock"))
+    plan = build_prompt_execution_plan(_transcript())
+
+    raw_outputs: list[tuple[PromptBundle, str]] = []
+    for bundle in plan.bundles:
+        raw_outputs.append(
+            (
+                bundle,
+                await provider(
+                    GradingProviderRequest(
+                        prompt=bundle,
+                        model=GRADING_DEFAULT_MODEL,
+                        timeout_seconds=5,
+                        max_retries=0,
+                    )
+                ),
+            )
+        )
+    parsed = parse_prompt_execution_results(tuple(raw_outputs))
+
+    assert len(raw_outputs) == 5
+    assert [bundle.prompt_key for bundle, _ in raw_outputs] == [
+        prompt_domain.value for prompt_domain in PromptDomain
+    ]
+    assert parsed.output.intent_code == "general_inquiry"
+    assert parsed.output.intent_label == "General Inquiry"
+    assert parsed.output.relevancy_score == 8
 
 
 @pytest.mark.asyncio
@@ -246,3 +422,80 @@ async def test_build_grading_provider_surfaces_openai_transport_results() -> Non
         "provider": "openai_compatible",
         "api_key": "api-key",
     }
+
+
+@pytest.mark.asyncio
+async def test_build_grading_provider_passes_prompt_pack_metadata_to_openai_transport() -> None:
+    captured_requests: list[dict[str, object]] = []
+    plan = build_prompt_execution_plan(_transcript())
+
+    async def fake_openai_transport(
+        request: GradingProviderRequest,
+        settings: Settings,
+    ) -> str:
+        captured_requests.append(
+            {
+                "prompt_key": request.prompt.prompt_key,
+                "prompt_version": request.prompt.prompt_version,
+                "template_file": request.prompt.template_file,
+                "sequence": request.prompt.metadata["prompt_sequence"],
+                "provider": settings.grading_provider,
+            }
+        )
+        return '{"ok": true}'
+
+    provider = build_grading_provider(
+        settings=_settings(
+            grading_provider="openai_compatible",
+            grading_api_key="api-key",
+        ),
+        openai_transport=fake_openai_transport,
+    )
+
+    for bundle in plan.bundles:
+        await provider(
+            GradingProviderRequest(
+                prompt=bundle,
+                model=GRADING_DEFAULT_MODEL,
+                timeout_seconds=5,
+                max_retries=0,
+            )
+        )
+
+    assert captured_requests == [
+        {
+            "prompt_key": "ai_performance",
+            "prompt_version": GRADING_DEFAULT_PROMPT_VERSION,
+            "template_file": "ai_performance_judge.md",
+            "sequence": 1,
+            "provider": "openai_compatible",
+        },
+        {
+            "prompt_key": "conversation_health",
+            "prompt_version": GRADING_DEFAULT_PROMPT_VERSION,
+            "template_file": "conversation_health.md",
+            "sequence": 2,
+            "provider": "openai_compatible",
+        },
+        {
+            "prompt_key": "user_signals",
+            "prompt_version": GRADING_DEFAULT_PROMPT_VERSION,
+            "template_file": "user-signals.md",
+            "sequence": 3,
+            "provider": "openai_compatible",
+        },
+        {
+            "prompt_key": "escalation",
+            "prompt_version": GRADING_DEFAULT_PROMPT_VERSION,
+            "template_file": "escalation.md",
+            "sequence": 4,
+            "provider": "openai_compatible",
+        },
+        {
+            "prompt_key": "intent",
+            "prompt_version": GRADING_DEFAULT_PROMPT_VERSION,
+            "template_file": "intent.md",
+            "sequence": 5,
+            "provider": "openai_compatible",
+        },
+    ]

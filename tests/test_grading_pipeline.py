@@ -13,16 +13,17 @@ from app.models.chats import ChatMessage
 from app.models.conversation_grades import ConversationGrade
 from app.models.enums import EscalationType, IdentityType
 from app.schemas.grading import GradingOutput
+from app.schemas.grading_prompts import PromptDomain
 from app.services.grading_extraction import CustomerDayCandidate
-from app.services.grading_parser import parse_grading_output
+from app.services.grading_parser import parse_prompt_execution_results
 from app.services.grading_pipeline import (
     GradeCustomerDayFailureCode,
     GradingPipelineDependencies,
     grade_customer_day,
 )
 from app.services.grading_persistence import upsert_customer_day_grade
-from app.services.grading_prompt import build_grading_prompt
-from app.services.grading_provider import GradingProviderError
+from app.services.grading_prompt import build_prompt_execution_plan
+from app.services.grading_provider import GradingProviderError, build_grading_provider
 
 
 def _candidate(
@@ -72,6 +73,50 @@ def _grading_output(**overrides: object) -> GradingOutput:
     }
     payload.update(overrides)
     return GradingOutput.model_validate(payload)
+
+
+def _partial_prompt_payloads(**overrides: object) -> dict[str, dict[str, object]]:
+    payload = _grading_output(**overrides).model_dump(mode="json")
+    return {
+        "ai_performance": {
+            "relevancy_score": payload["relevancy_score"],
+            "relevancy_reasoning": payload["relevancy_reasoning"],
+            "accuracy_score": payload["accuracy_score"],
+            "accuracy_reasoning": payload["accuracy_reasoning"],
+            "completeness_score": payload["completeness_score"],
+            "completeness_reasoning": payload["completeness_reasoning"],
+            "clarity_score": payload["clarity_score"],
+            "clarity_reasoning": payload["clarity_reasoning"],
+            "tone_score": payload["tone_score"],
+            "tone_reasoning": payload["tone_reasoning"],
+        },
+        "conversation_health": {
+            "resolution": payload["resolution"],
+            "resolution_reasoning": payload["resolution_reasoning"],
+            "repetition_score": payload["repetition_score"],
+            "repetition_reasoning": payload["repetition_reasoning"],
+            "loop_detected": payload["loop_detected"],
+            "loop_detected_reasoning": payload["loop_detected_reasoning"],
+        },
+        "user_signals": {
+            "satisfaction_score": payload["satisfaction_score"],
+            "satisfaction_reasoning": payload["satisfaction_reasoning"],
+            "frustration_score": payload["frustration_score"],
+            "frustration_reasoning": payload["frustration_reasoning"],
+            "user_relevancy": payload["user_relevancy"],
+            "user_relevancy_reasoning": payload["user_relevancy_reasoning"],
+        },
+        "escalation": {
+            "escalation_occurred": payload["escalation_occurred"],
+            "escalation_occurred_reasoning": payload["escalation_occurred_reasoning"],
+            "escalation_type": payload["escalation_type"],
+            "escalation_type_reasoning": payload["escalation_type_reasoning"],
+        },
+        "intent": {
+            "intent_label": payload["intent_label"],
+            "intent_reasoning": payload["intent_reasoning"],
+        },
+    }
 
 
 def _settings() -> Settings:
@@ -128,6 +173,15 @@ async def _seed_transcript(db_session, candidate: CustomerDayCandidate) -> None:
         ]
     )
     await db_session.commit()
+
+
+def _build_prompt_pack_provider(
+    payloads: dict[str, dict[str, object]],
+):
+    async def provider(request) -> str:
+        return json.dumps(payloads[request.prompt.prompt_key])
+
+    return provider
 
 
 @pytest.mark.asyncio
@@ -202,18 +256,16 @@ async def test_upsert_customer_day_grade_updates_legacy_phone_row_without_duplic
 async def test_grade_customer_day_runs_full_pipeline_and_persists_result(db_session) -> None:
     candidate = _candidate(conversation_identity="+971500000101")
     await _seed_transcript(db_session, candidate)
-
-    async def provider(_request) -> str:
-        return json.dumps(_grading_output().model_dump(mode="json"))
+    provider = build_grading_provider(settings=_settings())
 
     result = await grade_customer_day(
         db_session,
         candidate,
         GradingPipelineDependencies(
             settings=_settings(),
-            prompt_builder=build_grading_prompt,
+            prompt_planner=build_prompt_execution_plan,
             provider=provider,
-            parser=parse_grading_output,
+            parser=parse_prompt_execution_results,
             persistence=upsert_customer_day_grade,
         ),
     )
@@ -229,10 +281,14 @@ async def test_grade_customer_day_runs_full_pipeline_and_persists_result(db_sess
     assert result.candidate == candidate
     assert result.ok is True
     assert len(result.transcript.messages) == 2
-    assert result.prompt.metadata["message_count"] == 2
-    assert result.output.intent_code == "policy_inquiry"
+    assert result.prompt_plan.metadata["bundle_count"] == 5
+    assert result.prompt_plan.metadata["message_count"] == 2
+    assert [bundle.prompt_key for bundle, _ in result.raw_outputs] == [
+        prompt_domain.value for prompt_domain in PromptDomain
+    ]
+    assert result.output.intent_code == "general_inquiry"
     assert grade is not None
-    assert grade.intent_code == "policy_inquiry"
+    assert grade.intent_code == "general_inquiry"
     assert grade.relevancy_score == 8
 
 
@@ -249,9 +305,9 @@ async def test_grade_customer_day_returns_provider_failure_result(db_session) ->
         candidate,
         GradingPipelineDependencies(
             settings=_settings(),
-            prompt_builder=build_grading_prompt,
+            prompt_planner=build_prompt_execution_plan,
             provider=failing_provider,
-            parser=parse_grading_output,
+            parser=parse_prompt_execution_results,
             persistence=upsert_customer_day_grade,
         ),
     )
@@ -261,7 +317,8 @@ async def test_grade_customer_day_returns_provider_failure_result(db_session) ->
     assert result.ok is False
     assert result.code == GradeCustomerDayFailureCode.PROVIDER_ERROR
     assert result.message == "provider timeout"
-    assert result.prompt is not None
+    assert result.prompt_plan is not None
+    assert result.raw_outputs == ()
     assert grade_count == 0
 
 
@@ -271,18 +328,21 @@ async def test_grade_customer_day_returns_parse_failure_result_without_partial_w
 ) -> None:
     candidate = _candidate(conversation_identity="+971500000103")
     await _seed_transcript(db_session, candidate)
+    payloads = _partial_prompt_payloads()
 
-    async def invalid_payload_provider(_request) -> str:
-        return '{"relevancy_score": 9}'
+    async def invalid_payload_provider(request) -> str:
+        if request.prompt.prompt_key == PromptDomain.AI_PERFORMANCE.value:
+            return '{"relevancy_score": 9}'
+        return json.dumps(payloads[request.prompt.prompt_key])
 
     result = await grade_customer_day(
         db_session,
         candidate,
         GradingPipelineDependencies(
             settings=_settings(),
-            prompt_builder=build_grading_prompt,
+            prompt_planner=build_prompt_execution_plan,
             provider=invalid_payload_provider,
-            parser=parse_grading_output,
+            parser=parse_prompt_execution_results,
             persistence=upsert_customer_day_grade,
         ),
     )
@@ -292,7 +352,8 @@ async def test_grade_customer_day_returns_parse_failure_result_without_partial_w
     assert result.ok is False
     assert result.code == GradeCustomerDayFailureCode.PARSE_ERROR
     assert result.parse_error is not None
-    assert "tone_score" in " ".join(result.details)
+    assert len(result.raw_outputs) == 5
+    assert "ai_performance.tone_score" in " ".join(result.details)
     assert grade_count == 0
 
 
@@ -313,9 +374,9 @@ async def test_grade_customer_day_returns_empty_transcript_failure_without_provi
         candidate,
         GradingPipelineDependencies(
             settings=_settings(),
-            prompt_builder=build_grading_prompt,
+            prompt_planner=build_prompt_execution_plan,
             provider=provider,
-            parser=parse_grading_output,
+            parser=parse_prompt_execution_results,
             persistence=upsert_customer_day_grade,
         ),
     )
@@ -324,7 +385,7 @@ async def test_grade_customer_day_returns_empty_transcript_failure_without_provi
 
     assert result.ok is False
     assert result.code == GradeCustomerDayFailureCode.EMPTY_TRANSCRIPT
-    assert result.prompt is None
+    assert result.prompt_plan is None
     assert provider_called is False
     assert grade_count == 0
 
@@ -335,37 +396,29 @@ async def test_grade_customer_day_rerun_overwrites_existing_grade_without_duplic
 ) -> None:
     candidate = _candidate(conversation_identity="+971500000104")
     await _seed_transcript(db_session, candidate)
-
-    async def first_provider(_request) -> str:
-        return json.dumps(
-            _grading_output(
-                clarity_score=5,
-                clarity_reasoning="First run clarity score.",
-                intent_code="policy_inquiry",
-                intent_label="Policy Inquiry",
-                intent_reasoning="First run intent.",
-            ).model_dump(mode="json")
-        )
-
-    async def second_provider(_request) -> str:
-        return json.dumps(
-            _grading_output(
-                clarity_score=9,
-                clarity_reasoning="Second run clarity score.",
-                intent_code="general_inquiry",
-                intent_label="General Inquiry",
-                intent_reasoning="Second run intent.",
-            ).model_dump(mode="json")
-        )
+    first_payloads = _partial_prompt_payloads(
+        clarity_score=5,
+        clarity_reasoning="First run clarity score.",
+        intent_code="policy_inquiry",
+        intent_label="Policy Inquiry",
+        intent_reasoning="First run intent.",
+    )
+    second_payloads = _partial_prompt_payloads(
+        clarity_score=9,
+        clarity_reasoning="Second run clarity score.",
+        intent_code="general_inquiry",
+        intent_label="General Inquiry",
+        intent_reasoning="Second run intent.",
+    )
 
     await grade_customer_day(
         db_session,
         candidate,
         GradingPipelineDependencies(
             settings=_settings(),
-            prompt_builder=build_grading_prompt,
-            provider=first_provider,
-            parser=parse_grading_output,
+            prompt_planner=build_prompt_execution_plan,
+            provider=_build_prompt_pack_provider(first_payloads),
+            parser=parse_prompt_execution_results,
             persistence=upsert_customer_day_grade,
         ),
     )
@@ -374,9 +427,9 @@ async def test_grade_customer_day_rerun_overwrites_existing_grade_without_duplic
         candidate,
         GradingPipelineDependencies(
             settings=_settings(),
-            prompt_builder=build_grading_prompt,
-            provider=second_provider,
-            parser=parse_grading_output,
+            prompt_planner=build_prompt_execution_plan,
+            provider=_build_prompt_pack_provider(second_payloads),
+            parser=parse_prompt_execution_results,
             persistence=upsert_customer_day_grade,
         ),
     )

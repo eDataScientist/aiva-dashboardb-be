@@ -5,6 +5,7 @@ from datetime import date, datetime, timezone
 from app.core.config import Settings
 from app.core.constants import GRADING_DEFAULT_PROMPT_VERSION
 from app.models.enums import IdentityType
+from app.schemas.grading_prompts import PromptDomain
 from app.services.grading_extraction import (
     CustomerDayCandidate,
     CustomerDayTranscript,
@@ -98,6 +99,14 @@ def test_build_prompt_execution_plan_uses_prompt_pack_manifest_order() -> None:
     plan = build_prompt_execution_plan(_build_transcript())
 
     assert plan.prompt_version == GRADING_DEFAULT_PROMPT_VERSION
+    assert plan.metadata["bundle_count"] == 5
+    assert plan.metadata["prompt_order"] == [
+        "ai_performance",
+        "conversation_health",
+        "user_signals",
+        "escalation",
+        "intent",
+    ]
     assert [bundle.prompt_key for bundle in plan.bundles] == [
         "ai_performance",
         "conversation_health",
@@ -110,7 +119,20 @@ def test_build_prompt_execution_plan_uses_prompt_pack_manifest_order() -> None:
     assert plan.bundles[3].system_prompt is None
     assert "{{conversation}}" not in plan.bundles[0].user_prompt
     assert "{{system_prompt}}" not in plan.bundles[0].user_prompt
-    assert plan.bundles[0].user_prompt.count(
-        "You are the internal Arabia Insurance AI grading judge."
-    ) == 1
-    assert "You are the internal Arabia Insurance AI grading judge." not in plan.bundles[1].user_prompt
+    assert (
+        plan.bundles[0].user_prompt.count(
+            "You are **AIVA**, Arabia Insurance UAE's virtual assistant."
+        )
+        == 1
+    )
+    assert (
+        "You are **AIVA**, Arabia Insurance UAE's virtual assistant."
+        not in plan.bundles[1].user_prompt
+    )
+    assert plan.bundles[0].prompt_domain is PromptDomain.AI_PERFORMANCE
+    assert plan.bundles[0].template_file == "ai_performance_judge.md"
+    assert plan.bundles[0].include_system_prompt is True
+    assert plan.bundles[1].include_system_prompt is False
+    assert plan.bundles[4].output_fields == ("intent_label", "intent_reasoning")
+    assert plan.bundles[3].metadata["prompt_sequence"] == 4
+    assert plan.bundles[3].metadata["template_file"] == "escalation.md"

@@ -3,9 +3,103 @@
 ## Project
 - Name: `aiva-dashboard-be`
 - Current Milestone: `Milestone 2 - AI Grading, Monitoring, and Access Foundations`
-- Current Phase: `Milestone 2 Phase 3.5 - Prompt Externalization and Legacy Multi-Prompt Alignment (planned; inserted before Phase 4 execution)`
+- Current Phase: `Milestone 2 Phase 4 - Batch Execution and Run Management (planned; ready for execution after Phase 3.5 completion)`
 
 ## Current Status
+- Milestone 2 Phase 3.5 Stream D review completed (`2026-03-11`) and tasks moved to `DONE`:
+  - Approved and moved to `DONE`:
+    - `P2.35.15` (`EDA-114`)
+    - `P2.35.16` (`EDA-115`)
+  - Review outcomes:
+    - validation evidence confirms the prompt-pack refactor is stable at the compile, config/schema, prompt, parser, and pipeline levels
+    - the remaining `tests/test_grading_pipeline.py` sandbox failure is an environment-specific Docker/Testcontainers permission issue rather than an application regression
+    - docs and phase handoff notes now consistently point Phase 4 work at the validated file-based multi-prompt runtime
+  - Review validation status:
+    - `python -m compileall app tests` passed
+    - sandboxed `pytest tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_prompt_assets.py tests/test_grading_prompt.py tests/test_grading_parser.py tests/test_grading_pipeline.py -q` reached `39 passed` before the expected Docker/Testcontainers npipe blocker in `tests/test_grading_pipeline.py` (`CreateFile Access is denied`)
+    - unrestricted `pytest tests/test_grading_pipeline.py -q` passed (`7 passed`)
+- Milestone 2 Phase 3.5 Stream D execution completed (`2026-03-11`) and tasks moved to `IN REVIEW`:
+  - `P2.35.15` (`EDA-114`): Phase 3.5 validation passed with `python -m compileall app tests`; sandboxed targeted grading pytest reached `39 passed` before hitting the expected Docker/Testcontainers npipe permission blocker in `tests/test_grading_pipeline.py`; unrestricted `pytest tests/test_grading_pipeline.py -q` passed (`7 passed`)
+  - `P2.35.16` (`EDA-115`): `docs/tasks.md`, `docs/project-progress.md`, `docs/milestone-2/m2-phase-3.5.md`, and `docs/milestone-2/m2-phase-4.md` synchronized with Stream D execution outcomes and the Phase 4 prompt-pack dependency note
+  - Stream D validation status:
+    - `python -m compileall app tests` passed
+    - sandboxed `pytest tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_prompt_assets.py tests/test_grading_prompt.py tests/test_grading_parser.py tests/test_grading_pipeline.py -q` reached `39 passed` before the expected Docker/Testcontainers npipe blocker in `tests/test_grading_pipeline.py` (`CreateFile Access is denied`)
+    - unrestricted `pytest tests/test_grading_pipeline.py -q` passed (`7 passed`)
+- Milestone 2 Phase 3.5 Stream C review completed (`2026-03-11`) and tasks moved to `DONE`:
+  - Approved and moved to `DONE`:
+    - `P2.35.12` (`EDA-111`)
+    - `P2.35.13` (`EDA-112`)
+    - `P2.35.14` (`EDA-113`)
+  - Review outcomes:
+    - `grade_customer_day()` now drives the five-bundle prompt-pack plan end to end while preserving the explicit in-band `EMPTY_TRANSCRIPT` / `PROVIDER_ERROR` / `PARSE_ERROR` contract expected by downstream batch consumers
+    - the provider runtime remains compatible with both prompt-pack execution and the older single-prompt fallback, and prompt key/version/template metadata stays visible at the transport boundary
+    - pipeline coverage now locks in prompt-pack success, provider failure, parse failure without partial writes, empty-transcript short-circuiting, and rerun overwrite behavior
+  - Review validation status:
+    - `python -m compileall app/services/grading_pipeline.py app/services/grading_provider.py app/services/grading_parser.py tests/test_grading_pipeline.py tests/test_grading_parser.py` passed
+    - `pytest tests/test_grading_prompt.py tests/test_grading_parser.py -q` passed (`21 passed`)
+    - `pytest tests/test_grading_pipeline.py -q` passed (`7 passed`)
+- Milestone 2 Phase 3.5 Stream C execution completed (`2026-03-11`) and tasks moved to `IN REVIEW`:
+  - `P2.35.12` (`EDA-111`): `grade_customer_day()` now builds the five-bundle prompt-pack execution plan, runs the bundles concurrently, and parses merged prompt-domain outputs while preserving the explicit `EMPTY_TRANSCRIPT` / `PROVIDER_ERROR` / `PARSE_ERROR` result contract
+  - `P2.35.13` (`EDA-112`): the provider runtime now supports prompt-pack execution by emitting bounded mock payloads per prompt domain and preserving prompt key/version/template metadata visibility at the transport boundary
+  - `P2.35.14` (`EDA-113`): grading pipeline coverage now exercises end-to-end prompt-pack success, provider failure, parse failure without partial writes, empty-transcript short-circuiting, and rerun overwrite behavior
+  - Stream C validation status:
+    - `python -m compileall app/services/grading_pipeline.py app/services/grading_provider.py app/services/grading_parser.py tests/test_grading_pipeline.py tests/test_grading_parser.py` passed
+    - `pytest tests/test_grading_prompt.py tests/test_grading_parser.py -q` passed (`21 passed`)
+    - sandboxed `pytest tests/test_grading_prompt.py tests/test_grading_parser.py tests/test_grading_pipeline.py -q` hit the expected Docker npipe permission blocker in `tests/test_grading_pipeline.py` (`CreateFile Access is denied`)
+    - unrestricted `pytest tests/test_grading_pipeline.py -q` passed (`7 passed`)
+- Milestone 2 Phase 3.5 Stream B rereview completed (`2026-03-11`) and tasks moved to `DONE`:
+  - Approved and moved to `DONE`:
+    - `P2.35.10` (`EDA-109`)
+    - `P2.35.11` (`EDA-110`)
+  - Rereview outcomes:
+    - unsupported prompt-domain mapping keys now raise controlled `GradingParseFailure` with `FIELD_VALIDATION_ERROR` instead of leaking raw `ValueError`
+    - parser regression coverage now locks in the unsupported mapping-key path alongside the existing five-domain success and failure cases
+  - Rereview validation status:
+    - `python -m compileall app/schemas/grading_prompts.py app/services/grading_prompt.py app/services/grading_parser.py app/services/__init__.py tests/test_grading_prompt.py tests/test_grading_parser.py` passed
+    - `pytest tests/test_grading_prompt.py tests/test_grading_parser.py tests/test_grading_schemas.py -q` passed (`29 passed`)
+    - direct repro confirmed `parse_prompt_execution_results({"unsupported": "{}"})` now returns `GradingParseFailure` with `FIELD_VALIDATION_ERROR`
+- Milestone 2 Phase 3.5 Stream B review completed (`2026-03-11`):
+  - Approved and moved to `DONE`:
+    - `P2.35.9` (`EDA-108`)
+  - Kept in `IN REVIEW` for fixes:
+    - `P2.35.10` (`EDA-109`)
+    - `P2.35.11` (`EDA-110`)
+  - Review findings:
+    - `parse_prompt_execution_results()` still leaks raw `ValueError` for unsupported prompt-domain mapping keys because `_normalize_prompt_domain_outputs()` converts mapping keys with bare `PromptDomain(prompt_key)` coercion instead of raising a controlled `GradingParseFailure`
+    - Stream B parser tests do not yet cover that unsupported mapping-key regression path
+  - Review validation status:
+    - `python -m compileall app/schemas/grading_prompts.py app/services/grading_prompt.py app/services/grading_parser.py app/services/__init__.py tests/test_grading_prompt.py tests/test_grading_parser.py` passed
+    - `pytest tests/test_grading_prompt.py tests/test_grading_parser.py tests/test_grading_schemas.py -q` passed (`28 passed`)
+    - direct repro confirmed `parse_prompt_execution_results({"unsupported": "{}"})` raises `ValueError`
+- Milestone 2 Phase 3.5 Stream B execution completed (`2026-03-11`) and tasks moved to `IN REVIEW`:
+  - `P2.35.9` (`EDA-108`): `build_prompt_execution_plan()` now emits legacy-ordered per-domain prompt bundles with stable prompt metadata (`prompt_domain`, `template_file`, `include_system_prompt`, `prompt_sequence`) so downstream multi-prompt execution can address each bundle deterministically
+  - `P2.35.10` (`EDA-109`): prompt-pack parsing now validates each domain against its bounded schema and merges the five partial results back into canonical `GradingOutput`, including deterministic label-to-code normalization for the legacy label-only intent prompt
+  - `P2.35.11` (`EDA-110`): deterministic prompt/parser tests now cover prompt-plan metadata, successful five-domain merge, missing-domain failure, domain-scoped validation errors, and unsupported intent labels
+  - Stream B validation status:
+    - `python -m compileall app/schemas/grading_prompts.py app/services/grading_prompt.py app/services/grading_parser.py app/services/__init__.py tests/test_grading_prompt.py tests/test_grading_parser.py` passed
+    - `pytest tests/test_grading_prompt.py tests/test_grading_parser.py tests/test_grading_schemas.py -q` passed (`28 passed`)
+    - non-blocking environment note: pytest emitted `.pytest_cache` permission warnings in this workspace
+- Milestone 2 Phase 3.5 Stream A review completed (`2026-03-11`) and tasks moved to `DONE`:
+  - Approved and moved to `DONE`:
+    - `P2.35.6` (`EDA-105`)
+    - `P2.35.7` (`EDA-106`)
+    - `P2.35.8` (`EDA-107`)
+  - Review outcomes:
+    - the app-owned `app/prompt_assets/grading/v1/` pack now mirrors the legacy five-domain + shared-system prompt structure while keeping runtime loading version-scoped
+    - `load_prompt_pack()` now reuses the shared prompt-pack validator, so missing files and placeholder drift are rejected even when settings validation is bypassed
+    - direct asset-loader coverage now exercises version selection, missing required files, and unsupported placeholder failures against repository-backed assets
+  - Review validation status:
+    - `python -m compileall app/core/config.py app/services/grading_prompt_assets.py tests/test_grading_prompt.py tests/test_grading_prompt_assets.py` passed
+    - `pytest tests/test_grading_config.py tests/test_grading_prompt.py tests/test_grading_prompt_assets.py -q` passed (`12 passed`)
+    - non-blocking environment note: pytest emitted `.pytest_cache` permission warnings in this workspace
+- Milestone 2 Phase 3.5 Stream A execution completed (`2026-03-10`) and tasks moved to `IN REVIEW`:
+  - `P2.35.6` (`EDA-105`): scaffolded app-owned prompt-pack files under `app/prompt_assets/grading/v1/` were replaced with the legacy-aligned markdown asset content for all five prompt domains plus `system_prompt.md`
+  - `P2.35.7` (`EDA-106`): `load_prompt_pack()` now validates required files and placeholder rules at load time, so prompt-pack integrity is enforced even when settings validation is bypassed
+  - `P2.35.8` (`EDA-107`): direct prompt-pack asset tests added in `tests/test_grading_prompt_assets.py` covering version selection, missing required files, and unsupported placeholders
+  - Stream A validation status:
+    - `python -m compileall app/core/config.py app/services/grading_prompt_assets.py tests/test_grading_prompt.py tests/test_grading_prompt_assets.py` passed
+    - `pytest tests/test_grading_config.py tests/test_grading_prompt.py tests/test_grading_prompt_assets.py -q` passed (`12 passed`)
+    - non-blocking environment note: pytest still emitted `.pytest_cache` permission warnings in this workspace
 - Milestone 2 Phase 3.5 Gate 3.5 rereview completed (`2026-03-10`):
   - Approved and moved to `DONE`:
     - `P2.35.3` (`EDA-102`)
@@ -384,7 +478,7 @@
       - pre/post source table counts unchanged (`Arabia Insurance Chats=9090`, `usage_notifications=0`)
 
 ## Next Recommended Action
-- Gate 3.5 is fully done; begin Stream A for Phase 3.5 prompt assets and loader implementation.
+- Begin Gate 4.0 for Phase 4 batch-run contract, run-history schema, and execution-policy design.
 
 ## Notes
 - Kanban MCP is reachable and synchronized with current execution state.

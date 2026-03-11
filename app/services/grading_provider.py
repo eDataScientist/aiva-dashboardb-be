@@ -12,6 +12,7 @@ from app.core.constants import (
     GRADING_PROVIDER_MOCK,
     GRADING_PROVIDER_OPENAI_COMPATIBLE,
 )
+from app.schemas.grading_prompts import PromptDomain
 from app.services.grading_prompt import PromptBundle
 
 
@@ -97,9 +98,19 @@ def _build_retrying_provider(
 
 
 async def _default_mock_transport(request: GradingProviderRequest) -> str:
-    mock_response = request.prompt.metadata.get("mock_response")
-    if isinstance(mock_response, str) and mock_response.strip():
+    mock_response = _serialize_mock_response(
+        request.prompt.metadata.get("mock_response")
+    )
+    if mock_response is not None:
         return mock_response
+
+    mock_responses = request.prompt.metadata.get("mock_responses")
+    if isinstance(mock_responses, dict):
+        keyed_response = _serialize_mock_response(
+            mock_responses.get(request.prompt.prompt_key)
+        )
+        if keyed_response is not None:
+            return keyed_response
 
     return json.dumps(
         _build_default_mock_payload(request),
@@ -108,16 +119,19 @@ async def _default_mock_transport(request: GradingProviderRequest) -> str:
 
 
 def _build_default_mock_payload(request: GradingProviderRequest) -> dict[str, object]:
+    prompt_key = request.prompt.prompt_key
     conversation_identity = request.prompt.metadata.get(
         "conversation_identity",
         "unknown-identity",
     )
     grade_date = request.prompt.metadata.get("grade_date", "unknown-date")
     reasoning_context = (
-        f"Deterministic mock grading output for {conversation_identity} on {grade_date}."
+        "Deterministic mock grading output "
+        f"for {conversation_identity} on {grade_date} "
+        f"via {prompt_key} ({request.prompt.prompt_version})."
     )
 
-    return {
+    full_payload = {
         "relevancy_score": 8,
         "relevancy_reasoning": reasoning_context,
         "accuracy_score": 8,
@@ -148,6 +162,24 @@ def _build_default_mock_payload(request: GradingProviderRequest) -> dict[str, ob
         "intent_label": "General Inquiry",
         "intent_reasoning": reasoning_context,
     }
+
+    if request.prompt.prompt_domain is None:
+        return full_payload
+
+    return _PROMPT_DOMAIN_DEFAULT_OUTPUT_BUILDERS[request.prompt.prompt_domain](
+        full_payload
+    )
+
+
+def _serialize_mock_response(response: object) -> str | None:
+    if isinstance(response, str):
+        normalized_response = response.strip()
+        if normalized_response:
+            return normalized_response
+        return None
+    if isinstance(response, dict):
+        return json.dumps(response, ensure_ascii=True)
+    return None
 
 
 async def _default_openai_compatible_transport(
@@ -212,3 +244,71 @@ async def _default_openai_compatible_transport(
             "Grading provider returned a non-string completion payload."
         )
     return content
+
+
+def _build_ai_performance_payload(
+    payload: dict[str, object],
+) -> dict[str, object]:
+    return {
+        "relevancy_score": payload["relevancy_score"],
+        "relevancy_reasoning": payload["relevancy_reasoning"],
+        "accuracy_score": payload["accuracy_score"],
+        "accuracy_reasoning": payload["accuracy_reasoning"],
+        "completeness_score": payload["completeness_score"],
+        "completeness_reasoning": payload["completeness_reasoning"],
+        "clarity_score": payload["clarity_score"],
+        "clarity_reasoning": payload["clarity_reasoning"],
+        "tone_score": payload["tone_score"],
+        "tone_reasoning": payload["tone_reasoning"],
+    }
+
+
+def _build_conversation_health_payload(
+    payload: dict[str, object],
+) -> dict[str, object]:
+    return {
+        "resolution": payload["resolution"],
+        "resolution_reasoning": payload["resolution_reasoning"],
+        "repetition_score": payload["repetition_score"],
+        "repetition_reasoning": payload["repetition_reasoning"],
+        "loop_detected": payload["loop_detected"],
+        "loop_detected_reasoning": payload["loop_detected_reasoning"],
+    }
+
+
+def _build_user_signals_payload(payload: dict[str, object]) -> dict[str, object]:
+    return {
+        "satisfaction_score": payload["satisfaction_score"],
+        "satisfaction_reasoning": payload["satisfaction_reasoning"],
+        "frustration_score": payload["frustration_score"],
+        "frustration_reasoning": payload["frustration_reasoning"],
+        "user_relevancy": payload["user_relevancy"],
+        "user_relevancy_reasoning": payload["user_relevancy_reasoning"],
+    }
+
+
+def _build_escalation_payload(payload: dict[str, object]) -> dict[str, object]:
+    return {
+        "escalation_occurred": payload["escalation_occurred"],
+        "escalation_occurred_reasoning": payload["escalation_occurred_reasoning"],
+        "escalation_type": payload["escalation_type"],
+        "escalation_type_reasoning": payload["escalation_type_reasoning"],
+    }
+
+
+def _build_intent_payload(payload: dict[str, object]) -> dict[str, object]:
+    return {
+        "intent_label": payload["intent_label"],
+        "intent_reasoning": payload["intent_reasoning"],
+    }
+
+
+_PROMPT_DOMAIN_DEFAULT_OUTPUT_BUILDERS: dict[
+    PromptDomain, Callable[[dict[str, object]], dict[str, object]]
+] = {
+    PromptDomain.AI_PERFORMANCE: _build_ai_performance_payload,
+    PromptDomain.CONVERSATION_HEALTH: _build_conversation_health_payload,
+    PromptDomain.USER_SIGNALS: _build_user_signals_payload,
+    PromptDomain.ESCALATION: _build_escalation_payload,
+    PromptDomain.INTENT: _build_intent_payload,
+}

@@ -79,7 +79,7 @@ Last Updated: `2026-03-02` (Post-completion Stream A review: `P1.2.2` approved; 
 
 ## Milestone 2: AI Grading, Monitoring, and Access Foundations
 Status: `IN PROGRESS`  
-Last Updated: `2026-03-09` (Inserted Phase 3.5 prompt externalization plan before Phase 4 execution)
+Last Updated: `2026-03-11` (Phase 3.5 Stream D review completed; `P2.35.15` and `P2.35.16` moved to `DONE`)
 
 ## Phase 1 - Gate 1.0 (Shared Milestone 2 Data Contracts)
 - [x] `P2.1.1 - Design - Finalize customer-day grade grain and canonical identity contract - Gate (Independent)`
@@ -169,26 +169,26 @@ Last Updated: `2026-03-09` (Inserted Phase 3.5 prompt externalization plan befor
 - [x] `P2.35.5 - Service - Scaffold prompt-pack loader and multi-prompt orchestration module boundaries - Gate (Dependent)` (`P2.35.3`, `P2.35.4`) - `DONE` (`app/services/grading_prompt_assets.py`, `app/services/grading_prompt.py`, `app/services/grading_provider.py`, `app/services/__init__.py`, `tests/test_grading_prompt.py`)
 
 ## Stream A (Prompt Assets and File Loader)
-- [ ] `P2.35.6 - Service - Externalize grading prompts into versioned markdown prompt-pack assets - Stream A (Dependent)` (`P2.35.5`)
-- [ ] `P2.35.7 - Service - Implement prompt-pack file loader with shared system-prompt injection rules - Stream A (Dependent)` (`P2.35.6`)
-- [ ] `P2.35.8 - Test - Add prompt-pack loader and asset integrity tests - Stream A (Dependent)` (`P2.35.7`)
+- [x] `P2.35.6 - Service - Externalize grading prompts into versioned markdown prompt-pack assets - Stream A (Dependent)` (`P2.35.5`) - `DONE` (`app/prompt_assets/grading/v1/*.md` now carry the legacy-aligned prompt-pack content; review approved `2026-03-11`)
+- [x] `P2.35.7 - Service - Implement prompt-pack file loader with shared system-prompt injection rules - Stream A (Dependent)` (`P2.35.6`) - `DONE` (`load_prompt_pack()` now validates required files/placeholders at load time via the shared prompt-pack contract; review approved `2026-03-11`)
+- [x] `P2.35.8 - Test - Add prompt-pack loader and asset integrity tests - Stream A (Dependent)` (`P2.35.7`) - `DONE` (`tests/test_grading_prompt_assets.py` added; targeted compile + pytest passed; review approved `2026-03-11`)
 
 ## Stream B (Multi-Prompt Build, Parse, and Canonical Merge)
-- [ ] `P2.35.9 - Service - Implement per-domain prompt bundle generation aligned to legacy 5-prompt flow - Stream B (Dependent)` (`P2.35.7`)
-- [ ] `P2.35.10 - Service - Implement partial-result parsing and canonical GradingOutput merge - Stream B (Dependent)` (`P2.35.4`, `P2.35.9`)
-- [ ] `P2.35.11 - Test - Add deterministic multi-prompt parse and merge contract tests - Stream B (Dependent)` (`P2.35.10`)
+- [x] `P2.35.9 - Service - Implement per-domain prompt bundle generation aligned to legacy 5-prompt flow - Stream B (Dependent)` (`P2.35.7`) - `DONE` (review approved `2026-03-11`; legacy five-domain bundle metadata/order confirmed in `app/services/grading_prompt.py`, `app/schemas/grading_prompts.py`, `tests/test_grading_prompt.py`)
+- [x] `P2.35.10 - Service - Implement partial-result parsing and canonical GradingOutput merge - Stream B (Dependent)` (`P2.35.4`, `P2.35.9`) - `DONE` (rereview approved `2026-03-11`; unsupported prompt-domain mapping keys now raise controlled `GradingParseFailure` in `app/services/grading_parser.py`)
+- [x] `P2.35.11 - Test - Add deterministic multi-prompt parse and merge contract tests - Stream B (Dependent)` (`P2.35.10`) - `DONE` (rereview approved `2026-03-11`; regression coverage added for unsupported prompt-domain mapping keys in `tests/test_grading_parser.py`)
 
 ## Stream C (Pipeline Integration and Runtime Compatibility)
-- [ ] `P2.35.12 - Service - Integrate file-based multi-prompt execution into grade_customer_day orchestration - Stream C (Dependent)` (`P2.35.10`)
-- [ ] `P2.35.13 - Service - Update provider and mock runtime contracts for prompt-pack execution - Stream C (Dependent)` (`P2.35.12`)
-- [ ] `P2.35.14 - Test - Add end-to-end grading pipeline tests for file-based multi-prompt execution - Stream C (Dependent)` (`P2.35.13`)
+- [x] `P2.35.12 - Service - Integrate file-based multi-prompt execution into grade_customer_day orchestration - Stream C (Dependent)` (`P2.35.10`) - `DONE` (review approved `2026-03-11`; `grade_customer_day()` now executes the five-bundle prompt plan in parallel and preserves the in-band failure-result contract in `app/services/grading_pipeline.py` and `app/services/grading_parser.py`)
+- [x] `P2.35.13 - Service - Update provider and mock runtime contracts for prompt-pack execution - Stream C (Dependent)` (`P2.35.12`) - `DONE` (review approved `2026-03-11`; default mock transport returns bounded per-domain payloads and provider metadata remains visible across prompt-pack execution in `app/services/grading_provider.py` and `tests/test_grading_parser.py`)
+- [x] `P2.35.14 - Test - Add end-to-end grading pipeline tests for file-based multi-prompt execution - Stream C (Dependent)` (`P2.35.13`) - `DONE` (review approved `2026-03-11`; `tests/test_grading_pipeline.py` covers prompt-pack success, provider failure, parse failure, empty-transcript short-circuiting, and rerun overwrite behavior)
 
 ## Stream D (Validation, Docs, and Phase 4 Handoff)
-- [ ] `P2.35.15 - QA - Run compile and targeted pytest verification for prompt-pack refactor scope - Stream D (Dependent)` (`P2.35.11`, `P2.35.14`)
-- [ ] `P2.35.16 - Docs - Update task/progress docs and Phase 4 dependency notes after prompt refactor - Stream D (Dependent)` (`P2.35.15`)
+- [x] `P2.35.15 - QA - Run compile and targeted pytest verification for prompt-pack refactor scope - Stream D (Dependent)` (`P2.35.11`, `P2.35.14`) - `DONE` (review approved `2026-03-11`; `python -m compileall app tests` passed, sandboxed targeted grading suite reached `39 passed` before the expected Docker/Testcontainers npipe blocker, and unrestricted `pytest tests/test_grading_pipeline.py -q` passed `7 passed`)
+- [x] `P2.35.16 - Docs - Update task/progress docs and Phase 4 dependency notes after prompt refactor - Stream D (Dependent)` (`P2.35.15`) - `DONE` (review approved `2026-03-11`; `docs/tasks.md`, `docs/project-progress.md`, `docs/milestone-2/m2-phase-3.5.md`, and `docs/milestone-2/m2-phase-4.md` synchronized with Stream D outcomes and Phase 4 handoff state)
 
 ## Phase 4 - Gate 4.0 (Batch Execution and Run Management)
-Phase dependency note: execution is deferred until Phase 3.5 prompt externalization completes.
+Phase dependency note: Phase 3.5 is complete; Phase 4 batch/run-management work should start from the validated file-based multi-prompt runtime.
 
 ## Gate 4.0
 - [ ] `P2.4.1 - Design - Finalize batch run contract, statuses, idempotency, and access matrix - Gate (Independent)`

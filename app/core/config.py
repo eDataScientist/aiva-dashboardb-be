@@ -222,7 +222,7 @@ class Settings(BaseSettings):
                 "GRADING_API_KEY is required when GRADING_PROVIDER is "
                 "'openai_compatible'."
             )
-        _validate_prompt_pack_assets(
+        validate_prompt_pack_assets(
             root_dir=self.resolved_grading_prompt_assets_dir,
             version=self.grading_prompt_version,
         )
@@ -259,7 +259,7 @@ def _project_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def _validate_prompt_pack_assets(*, root_dir: Path, version: str) -> None:
+def validate_prompt_pack_assets(*, root_dir: Path, version: str) -> None:
     if not root_dir.exists() or not root_dir.is_dir():
         raise ValueError(
             "GRADING_PROMPT_VERSION points to a missing prompt-pack directory: "

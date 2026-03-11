@@ -142,6 +142,15 @@ class IntentPromptOutput(SchemaModel):
     intent_reasoning: str = Field(min_length=1)
 
 
+PromptDomainOutput = (
+    AIPerformancePromptOutput
+    | ConversationHealthPromptOutput
+    | UserSignalsPromptOutput
+    | EscalationPromptOutput
+    | IntentPromptOutput
+)
+
+
 class PromptPackPartialOutputs(SchemaModel):
     ai_performance: AIPerformancePromptOutput
     conversation_health: ConversationHealthPromptOutput

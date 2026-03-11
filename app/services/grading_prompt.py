@@ -5,7 +5,7 @@ from typing import Any, Protocol
 
 from app.core.config import Settings, get_settings
 from app.core.constants import INTENT_CODE_TO_LABEL
-from app.schemas.grading_prompts import PromptDomain
+from app.schemas.grading_prompts import PromptDomain, PromptTemplateSpec
 from app.services.grading_extraction import CustomerDayTranscript, TranscriptMessage
 from app.services.grading_prompt_assets import LoadedPromptPack, load_prompt_pack
 
@@ -131,7 +131,10 @@ class PromptBundle:
     user_prompt: str
     prompt_version: str
     prompt_key: str = "grading"
+    prompt_domain: PromptDomain | None = None
     output_fields: tuple[str, ...] = ()
+    template_file: str | None = None
+    include_system_prompt: bool = False
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -172,28 +175,26 @@ def build_prompt_execution_plan(
     loaded_prompt_pack = prompt_pack or load_prompt_pack()
     metadata = _build_prompt_metadata(transcript)
     bundles = tuple(
-        PromptBundle(
-            system_prompt=None,
-            user_prompt=_render_prompt_template(
-                template_text=loaded_prompt_pack.get_template(template.prompt_key),
-                conversation_text=_render_transcript_messages(transcript),
-                system_prompt_text=(
-                    loaded_prompt_pack.system_prompt_text
-                    if template.include_system_prompt
-                    else None
-                ),
-            ),
-            prompt_version=loaded_prompt_pack.manifest.version,
-            prompt_key=template.prompt_key.value,
-            output_fields=template.output_fields,
-            metadata={**metadata, "prompt_key": template.prompt_key.value},
+        _build_prompt_pack_bundle(
+            transcript=transcript,
+            prompt_pack=loaded_prompt_pack,
+            template=template,
+            base_metadata=metadata,
+            sequence_index=sequence_index,
         )
-        for template in loaded_prompt_pack.manifest.prompt_templates
+        for sequence_index, template in enumerate(
+            loaded_prompt_pack.manifest.prompt_templates,
+            start=1,
+        )
     )
     return PromptExecutionPlan(
         prompt_version=loaded_prompt_pack.manifest.version,
         bundles=bundles,
-        metadata=metadata,
+        metadata={
+            **metadata,
+            "bundle_count": len(bundles),
+            "prompt_order": [bundle.prompt_key for bundle in bundles],
+        },
     )
 
 
@@ -308,3 +309,39 @@ def _render_prompt_template(
     if system_prompt_text is not None:
         rendered = rendered.replace("{{system_prompt}}", system_prompt_text)
     return rendered
+
+
+def _build_prompt_pack_bundle(
+    *,
+    transcript: CustomerDayTranscript,
+    prompt_pack: LoadedPromptPack,
+    template: PromptTemplateSpec,
+    base_metadata: dict[str, Any],
+    sequence_index: int,
+) -> PromptBundle:
+    system_prompt_text = (
+        prompt_pack.system_prompt_text if template.include_system_prompt else None
+    )
+    prompt_metadata = {
+        **base_metadata,
+        "prompt_key": template.prompt_key.value,
+        "template_file": template.template_file,
+        "include_system_prompt": template.include_system_prompt,
+        "output_fields": list(template.output_fields),
+        "prompt_sequence": sequence_index,
+    }
+    return PromptBundle(
+        system_prompt=None,
+        user_prompt=_render_prompt_template(
+            template_text=prompt_pack.get_template(template.prompt_key),
+            conversation_text=_render_transcript_messages(transcript),
+            system_prompt_text=system_prompt_text,
+        ),
+        prompt_version=prompt_pack.manifest.version,
+        prompt_key=template.prompt_key.value,
+        prompt_domain=template.prompt_key,
+        output_fields=template.output_fields,
+        template_file=template.template_file,
+        include_system_prompt=template.include_system_prompt,
+        metadata=prompt_metadata,
+    )

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from app.core.config import Settings, get_settings
+from app.core.config import Settings, get_settings, validate_prompt_pack_assets
 from app.core.constants import (
     GRADING_DEFAULT_PROMPT_VERSION,
     GRADING_PROMPT_DOMAIN_ORDER,
@@ -60,10 +60,13 @@ def load_prompt_pack(*, settings: Settings | None = None) -> LoadedPromptPack:
     manifest = build_prompt_pack_manifest(version=resolved_settings.grading_prompt_version)
     root_dir = resolved_settings.resolved_grading_prompt_assets_dir
 
-    if not root_dir.exists() or not root_dir.is_dir():
-        raise GradingPromptAssetError(
-            f"Prompt-pack directory does not exist: {root_dir}"
+    try:
+        validate_prompt_pack_assets(
+            root_dir=root_dir,
+            version=resolved_settings.grading_prompt_version,
         )
+    except ValueError as exc:
+        raise GradingPromptAssetError(str(exc)) from exc
 
     try:
         system_prompt_text = (root_dir / manifest.system_prompt_file).read_text(

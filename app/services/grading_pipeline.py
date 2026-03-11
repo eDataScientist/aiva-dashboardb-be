@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from enum import Enum
 
@@ -12,9 +13,13 @@ from app.services.grading_extraction import (
     CustomerDayTranscript,
     assemble_customer_day_transcript,
 )
-from app.services.grading_parser import GradingParseFailure, GradingParser
+from app.services.grading_parser import GradingParseFailure, PromptExecutionParser
 from app.services.grading_persistence import GradingPersistence
-from app.services.grading_prompt import GradingPromptBuilder, PromptBundle
+from app.services.grading_prompt import (
+    MultiPromptExecutionPlanner,
+    PromptBundle,
+    PromptExecutionPlan,
+)
 from app.services.grading_provider import (
     GradingProvider,
     GradingProviderError,
@@ -25,9 +30,9 @@ from app.services.grading_provider import (
 @dataclass(frozen=True, slots=True)
 class GradingPipelineDependencies:
     settings: Settings
-    prompt_builder: GradingPromptBuilder
+    prompt_planner: MultiPromptExecutionPlanner
     provider: GradingProvider
-    parser: GradingParser
+    parser: PromptExecutionParser
     persistence: GradingPersistence
 
 
@@ -41,8 +46,8 @@ class GradeCustomerDayFailureCode(str, Enum):
 class GradeCustomerDaySuccess:
     candidate: CustomerDayCandidate
     transcript: CustomerDayTranscript
-    prompt: PromptBundle
-    raw_output: str
+    prompt_plan: PromptExecutionPlan
+    raw_outputs: tuple[tuple[PromptBundle, str], ...]
     output: GradingOutput
 
     @property
@@ -57,8 +62,8 @@ class GradeCustomerDayFailure:
     message: str
     transcript: CustomerDayTranscript
     details: tuple[str, ...] = ()
-    prompt: PromptBundle | None = None
-    raw_output: str | None = None
+    prompt_plan: PromptExecutionPlan | None = None
+    raw_outputs: tuple[tuple[PromptBundle, str], ...] = ()
     parse_error: GradingParseError | None = None
 
     @property
@@ -67,6 +72,13 @@ class GradeCustomerDayFailure:
 
 
 GradeCustomerDayResult = GradeCustomerDaySuccess | GradeCustomerDayFailure
+
+
+@dataclass(frozen=True, slots=True)
+class _PromptExecutionProviderFailure(Exception):
+    error: GradingProviderError
+    raw_outputs: tuple[tuple[PromptBundle, str], ...]
+    details: tuple[str, ...]
 
 
 async def grade_customer_day(
@@ -83,28 +95,26 @@ async def grade_customer_day(
             transcript=transcript,
         )
 
-    prompt = dependencies.prompt_builder(transcript)
+    prompt_plan = dependencies.prompt_planner(transcript)
 
     try:
-        raw_output = await dependencies.provider(
-            GradingProviderRequest(
-                prompt=prompt,
-                model=dependencies.settings.grading_model,
-                timeout_seconds=dependencies.settings.grading_request_timeout_seconds,
-                max_retries=dependencies.settings.grading_max_retries,
-            )
+        raw_outputs = await _execute_prompt_plan(
+            prompt_plan=prompt_plan,
+            dependencies=dependencies,
         )
-    except GradingProviderError as exc:
+    except _PromptExecutionProviderFailure as exc:
         return GradeCustomerDayFailure(
             candidate=candidate,
             code=GradeCustomerDayFailureCode.PROVIDER_ERROR,
-            message=str(exc),
+            message=str(exc.error),
             transcript=transcript,
-            prompt=prompt,
+            details=exc.details,
+            prompt_plan=prompt_plan,
+            raw_outputs=exc.raw_outputs,
         )
 
     try:
-        parsed = dependencies.parser(raw_output)
+        parsed = dependencies.parser(raw_outputs)
     except GradingParseFailure as exc:
         return GradeCustomerDayFailure(
             candidate=candidate,
@@ -112,8 +122,8 @@ async def grade_customer_day(
             message=exc.error.message,
             transcript=transcript,
             details=tuple(exc.error.details),
-            prompt=prompt,
-            raw_output=exc.error.raw_output,
+            prompt_plan=prompt_plan,
+            raw_outputs=raw_outputs,
             parse_error=exc.error,
         )
 
@@ -122,8 +132,8 @@ async def grade_customer_day(
     return GradeCustomerDaySuccess(
         candidate=candidate,
         transcript=transcript,
-        prompt=prompt,
-        raw_output=raw_output,
+        prompt_plan=prompt_plan,
+        raw_outputs=raw_outputs,
         output=parsed.output,
     )
 
@@ -131,15 +141,72 @@ async def grade_customer_day(
 def build_grading_pipeline_dependencies(
     *,
     settings: Settings | None = None,
-    prompt_builder: GradingPromptBuilder,
+    prompt_planner: MultiPromptExecutionPlanner,
     provider: GradingProvider,
-    parser: GradingParser,
+    parser: PromptExecutionParser,
     persistence: GradingPersistence,
 ) -> GradingPipelineDependencies:
     return GradingPipelineDependencies(
         settings=settings or get_settings(),
-        prompt_builder=prompt_builder,
+        prompt_planner=prompt_planner,
         provider=provider,
         parser=parser,
         persistence=persistence,
     )
+
+
+async def _execute_prompt_plan(
+    *,
+    prompt_plan: PromptExecutionPlan,
+    dependencies: GradingPipelineDependencies,
+) -> tuple[tuple[PromptBundle, str], ...]:
+    executions = await asyncio.gather(
+        *(
+            _execute_prompt_bundle(
+                bundle=bundle,
+                dependencies=dependencies,
+            )
+            for bundle in prompt_plan.bundles
+        ),
+        return_exceptions=True,
+    )
+
+    raw_outputs: list[tuple[PromptBundle, str]] = []
+    provider_errors: list[tuple[PromptBundle, GradingProviderError]] = []
+    for bundle, execution in zip(prompt_plan.bundles, executions):
+        if isinstance(execution, Exception):
+            if isinstance(execution, GradingProviderError):
+                error = execution
+            else:
+                error = GradingProviderError(str(execution))
+            provider_errors.append((bundle, error))
+            continue
+        raw_outputs.append(execution)
+
+    if provider_errors:
+        raise _PromptExecutionProviderFailure(
+            error=provider_errors[0][1],
+            raw_outputs=tuple(raw_outputs),
+            details=tuple(
+                f"{bundle.prompt_key}: {error}"
+                for bundle, error in provider_errors
+            ),
+        )
+
+    return tuple(raw_outputs)
+
+
+async def _execute_prompt_bundle(
+    *,
+    bundle: PromptBundle,
+    dependencies: GradingPipelineDependencies,
+) -> tuple[PromptBundle, str]:
+    raw_output = await dependencies.provider(
+        GradingProviderRequest(
+            prompt=bundle,
+            model=dependencies.settings.grading_model,
+            timeout_seconds=dependencies.settings.grading_request_timeout_seconds,
+            max_retries=dependencies.settings.grading_max_retries,
+        )
+    )
+    return bundle, raw_output

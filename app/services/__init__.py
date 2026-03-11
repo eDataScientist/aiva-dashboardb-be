@@ -21,7 +21,12 @@ from app.services.grading_extraction import (
 from app.services.grading_parser import (
     GradingParseFailure,
     ParsedGradingResult,
+    ParsedPromptDomainResult,
+    ParsedPromptExecutionResult,
+    merge_prompt_pack_outputs,
     parse_grading_output,
+    parse_prompt_domain_output,
+    parse_prompt_execution_results,
 )
 from app.services.grading_pipeline import (
     GradeCustomerDayFailure,
@@ -66,6 +71,8 @@ __all__ = [
     "GradingProviderRequest",
     "LoadedPromptPack",
     "ParsedGradingResult",
+    "ParsedPromptDomainResult",
+    "ParsedPromptExecutionResult",
     "PromptBundle",
     "PromptExecutionPlan",
     "TranscriptMessage",
@@ -84,7 +91,10 @@ __all__ = [
     "gst_grade_date_expr",
     "list_customer_day_candidates",
     "load_prompt_pack",
+    "merge_prompt_pack_outputs",
     "parse_grading_output",
+    "parse_prompt_domain_output",
+    "parse_prompt_execution_results",
     "resolve_canonical_identity",
     "to_account_context",
     "upsert_customer_day_grade",
