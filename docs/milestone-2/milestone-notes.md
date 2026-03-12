@@ -67,6 +67,23 @@ This document captures milestone-level planning decisions made during discussion
   - the legacy label-based `intent` prompt is retained for parity, but merge logic must normalize `intent_label` to canonical `intent_code` deterministically
   - no DB migration is required for prompt externalization; prompt version remains runtime metadata in Phase 3.5
 
+## Phase 4 Gate 4.0 Batch-Run Decisions (`2026-03-11`)
+- Phase 4 operational run-management endpoints are `super_admin`-only in the initial implementation.
+- `company_admin` and `analyst` do not receive run-trigger or run-history access in Phase 4 because the current backend has no tenant scoping and run history is global operator data.
+- Manual run trigger will return `202 Accepted` after queueing a run and starting execution asynchronously in-process.
+- Scheduled execution remains previous-day GST only and defaults to `rerun_existing=false`.
+- Manual execution uses:
+  - `run_mode=backfill` when `rerun_existing=false`
+  - `run_mode=rerun` when `rerun_existing=true`
+- Phase 4 run-item vocabulary includes one non-failure skip outcome in addition to the Phase 3 controlled failures:
+  - `success`
+  - `skipped_existing`
+  - `empty_transcript`
+  - `provider_error`
+  - `parse_error`
+- Manual backfill is bounded by configuration only; Phase 4 does not add a separate hardcoded go-live lower-bound date.
+- Duplicate-window protection should use both active-run preflight checks and PostgreSQL advisory locking keyed by target date window.
+
 ## Phase Ordering (High-Level)
 - Data contract and migrations should come before auth implementation.
 - The data-contract phase should include models needed for auth/accounts as well as Milestone 2 grading/monitoring support.

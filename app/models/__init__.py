@@ -1,6 +1,14 @@
 from app.models.account import Account
 from app.models.chats import ChatMessage
 from app.models.conversation_grades import ConversationGrade
+from app.models.grading_runs import (
+    GradingRun,
+    GradingRunItem,
+    GradingRunItemStatus,
+    GradingRunMode,
+    GradingRunStatus,
+    GradingRunTriggerType,
+)
 from app.models.enums import (
     AccountRole,
     ChannelType,
@@ -20,6 +28,12 @@ __all__ = [
     "ConversationGrade",
     "DirectionType",
     "EscalationType",
+    "GradingRun",
+    "GradingRunItem",
+    "GradingRunItemStatus",
+    "GradingRunMode",
+    "GradingRunStatus",
+    "GradingRunTriggerType",
     "IdentityType",
     "MessageType",
     "MonitoringHighlightConfig",

@@ -8,6 +8,32 @@ GRADING_SUPPORTED_PROVIDERS: Final[tuple[str, ...]] = (
     GRADING_PROVIDER_MOCK,
     GRADING_PROVIDER_OPENAI_COMPATIBLE,
 )
+GRADING_BATCH_TIMEZONE: Final[str] = "Asia/Dubai"
+GRADING_RUN_STALE_RECOVERY_ERROR_MESSAGE: Final[str] = (
+    "Recovered stale grading run after scheduler timeout."
+)
+GRADING_RUN_TRIGGER_TYPES: Final[tuple[str, ...]] = ("scheduled", "manual")
+GRADING_RUN_MODES: Final[tuple[str, ...]] = ("daily", "backfill", "rerun")
+GRADING_RUN_STATUSES: Final[tuple[str, ...]] = (
+    "queued",
+    "running",
+    "completed",
+    "completed_with_failures",
+    "failed",
+)
+GRADING_RUN_TERMINAL_STATUSES: Final[frozenset[str]] = frozenset(
+    {"completed", "completed_with_failures", "failed"}
+)
+GRADING_RUN_ITEM_STATUSES: Final[tuple[str, ...]] = (
+    "success",
+    "skipped_existing",
+    "empty_transcript",
+    "provider_error",
+    "parse_error",
+)
+GRADING_RUN_ITEM_FAILURE_STATUSES: Final[frozenset[str]] = frozenset(
+    {"empty_transcript", "provider_error", "parse_error"}
+)
 GRADING_DEFAULT_MODEL: Final[str] = "mock-grade-v1"
 GRADING_DEFAULT_PROMPT_VERSION: Final[str] = "v1"
 GRADING_PROMPT_PACK_BASE_DIR: Final[str] = "app/prompt_assets/grading"

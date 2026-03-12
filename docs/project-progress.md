@@ -3,9 +3,106 @@
 ## Project
 - Name: `aiva-dashboard-be`
 - Current Milestone: `Milestone 2 - AI Grading, Monitoring, and Access Foundations`
-- Current Phase: `Milestone 2 Phase 4 - Batch Execution and Run Management (planned; ready for execution after Phase 3.5 completion)`
+- Current Phase: `Milestone 2 Phase 4 - Batch Execution and Run Management (review complete)`
 
 ## Current Status
+- Milestone 2 Phase 4 Stream D review completed (`2026-03-12`) and tasks moved to `DONE`:
+  - Approved and moved to `DONE`:
+    - `P2.4.15` (`EDA-130`)
+    - `P2.4.16` (`EDA-131`)
+    - `P2.4.17` (`EDA-132`)
+  - Review outcomes:
+    - the in-process scheduler lifecycle is wired cleanly through FastAPI startup/shutdown, and stale `queued` / `running` rows are recovered deterministically before scheduled execution continues
+    - compile verification remains clean for the full `app` and `tests` trees, and the targeted Phase 4 scheduler/run-management slice passed end to end (`54 passed`) when rerun unrestricted during review
+    - Stream D documentation is consistent with the board state, validation evidence, and the remaining single-instance scheduler, timeout-tuning, provider-safety, and Docker/Testcontainers environment handoff risks
+  - Review validation status:
+    - `python -m compileall app tests` passed
+    - unrestricted `pytest tests/test_grading_scheduler.py tests/test_grading_runs.py tests/test_grading_batch.py tests/test_grading_run_services.py tests/test_grading_runs_api.py -q` passed (`54 passed`)
+- Milestone 2 Phase 4 Stream D execution completed (`2026-03-12`) and tasks moved to `IN REVIEW`:
+  - `P2.4.15` (`EDA-130`): in-process scheduler startup/shutdown hooks now live in `app/main.py`, and `app/services/grading_scheduler.py` now recovers stale `queued` / `running` rows, builds previous-day scheduled execution requests, and drives the scheduler loop through explicit start/stop helpers
+  - `P2.4.16` (`EDA-131`): broad Phase 4 compile verification passed via `python -m compileall app tests`, and the targeted grading-run verification slice covering scheduler, run ledger, batch execution, service wrappers, and protected API routes passed outside the sandbox
+  - `P2.4.17` (`EDA-132`): `docs/tasks.md`, `docs/project-progress.md`, and `docs/milestone-2/m2-phase-4.md` synchronized with Stream D execution outcomes, validation evidence, and the residual Phase 5/6 operational handoff risks
+  - Stream D validation status:
+    - `python -m compileall app/main.py app/services/grading_scheduler.py app/services/__init__.py app/core/constants.py app/core/__init__.py tests/test_grading_scheduler.py` passed
+    - `python -m compileall app tests` passed
+    - sandboxed `pytest tests/test_grading_scheduler.py tests/test_grading_runs.py tests/test_grading_batch.py tests/test_grading_run_services.py tests/test_grading_runs_api.py -q` hit the expected Docker/Testcontainers npipe permission blocker before fixture startup (`CreateFile Access is denied`)
+    - unrestricted `pytest tests/test_grading_scheduler.py tests/test_grading_runs.py tests/test_grading_batch.py tests/test_grading_run_services.py tests/test_grading_runs_api.py -q` passed (`54 passed`)
+  - Phase 5/6 handoff risks:
+    - only one deployed instance should enable the in-process scheduler until an external orchestrator exists, or duplicate daily launches may still occur across hosts despite per-window advisory locking
+    - stale-run recovery is timeout-based and now deterministic, but the configured timeout should be revisited against real provider latency before production scheduling is enabled broadly
+    - scheduler-enabled non-test runs still require a non-mock provider unless `GRADING_BATCH_ALLOW_MOCK_PROVIDER_RUNS=true`; Phase 5/6 environments must keep that guard aligned with deployment intent
+    - targeted grading-run verification still needs unrestricted Docker/Testcontainers access in this workstation environment because sandboxed runs continue to fail on the Windows npipe permission boundary
+- Milestone 2 Phase 4 Stream C rereview completed (`2026-03-12`) and tasks moved to `DONE`:
+  - Approved and moved to `DONE`:
+    - `P2.4.12` (`EDA-127`)
+    - `P2.4.13` (`EDA-128`)
+    - `P2.4.14` (`EDA-129`)
+  - Rereview outcomes:
+    - `persist_failed_run()` now commits failed terminal state even when execution aborts after `queued -> running`, and the new batch regression confirms the persisted row stays `failed` across a session rollback boundary
+    - grading-run request validation for `POST /api/v1/grading/runs` and `GET /api/v1/grading/runs` now resolves to the documented `GradingRunErrorResponse` envelope instead of leaking the generic FastAPI/Pydantic `422` payload
+    - Stream C API coverage now includes mixed `grade_date` plus range fields, one-sided range payloads, and invalid list-query ranges, locking in the schema-level `invalid_date_window` contract
+  - Rereview validation status:
+    - `python -m compileall app/main.py app/services/grading_batch.py app/api/routes/grading_runs.py tests/test_grading_batch.py tests/test_grading_runs_api.py tests/test_grading_run_services.py` passed
+    - unrestricted `pytest tests/test_grading_runs.py tests/test_grading_batch.py tests/test_grading_run_services.py tests/test_grading_runs_api.py -q` passed (`51 passed`)
+- Milestone 2 Phase 4 Stream C review-fix pass completed (`2026-03-12`) and tasks moved back to `IN REVIEW`:
+  - `P2.4.12` (`EDA-127`): `execute_prepared_grading_run()` now commits the failed terminal state even when the abort happens after `queued -> running`, and `tests/test_grading_batch.py` adds regression coverage that rolls back the session and confirms the persisted row remains `failed`
+  - `P2.4.13` (`EDA-128`): grading-run request validation is now normalized to `GradingRunErrorResponse` for `POST /api/v1/grading/runs` and `GET /api/v1/grading/runs` via targeted request-validation handling in `app/main.py`
+  - `P2.4.14` (`EDA-129`): `tests/test_grading_runs_api.py` now covers schema-level invalid trigger payloads (`grade_date` mixed with range fields, one-sided ranges) plus invalid list-query ranges, asserting the custom `invalid_date_window` envelope
+  - Review-fix validation status:
+    - `python -m compileall app/main.py app/services/grading_batch.py tests/test_grading_batch.py tests/test_grading_runs_api.py` passed
+    - unrestricted `pytest tests/test_grading_runs.py tests/test_grading_batch.py tests/test_grading_run_services.py tests/test_grading_runs_api.py -q` passed (`51 passed`)
+- Milestone 2 Phase 4 Stream C execution completed (`2026-03-12`) and tasks moved to `IN REVIEW`:
+  - `P2.4.12` (`EDA-127`): service-layer run-management wrappers now enforce `super_admin` access, validate manual windows, reject duplicate active windows before queueing, and expose run-history list/detail payloads via `app/services/grading_runs.py`, `app/services/grading_batch.py`, and `tests/test_grading_run_services.py`
+  - `P2.4.13` (`EDA-128`): protected `/api/v1/grading/runs` trigger/list/detail endpoints added in `app/api/routes/grading_runs.py` and wired through `app/api/routes/__init__.py` and `app/api/router.py`
+  - `P2.4.14` (`EDA-129`): route coverage added in `tests/test_grading_runs_api.py` for `202` queueing, `401`/`403` auth behavior, custom `422` invalid-window errors, `409` duplicate-window conflicts, and run-history list/detail responses
+  - Stream C validation status:
+    - `python -m compileall app/api/routes/grading_runs.py app/api/routes/__init__.py app/api/router.py app/services/grading_batch.py app/services/grading_runs.py app/services/__init__.py tests/test_grading_run_services.py tests/test_grading_runs_api.py` passed
+    - sandboxed `pytest tests/test_grading_runs.py tests/test_grading_batch.py tests/test_grading_run_services.py tests/test_grading_runs_api.py -q` hit the expected Docker/Testcontainers npipe permission blocker before fixture startup (`CreateFile Access is denied`)
+    - unrestricted `pytest tests/test_grading_runs.py tests/test_grading_batch.py tests/test_grading_run_services.py tests/test_grading_runs_api.py -q` passed (`47 passed`)
+    - unrestricted `pytest tests/test_grading_runs_api.py -q` passed (`9 passed`) after the final `422` status-constant cleanup
+- Milestone 2 Phase 4 Stream B task-state sync corrected (`2026-03-12`):
+  - Kanban already reflected `P2.4.9` (`EDA-124`), `P2.4.10` (`EDA-125`), and `P2.4.11` (`EDA-126`) as `DONE`; `docs/tasks.md` and `docs/milestone-2/m2-phase-4.md` were synchronized to match the implemented batch-window planner, advisory-lock executor, and deterministic batch test coverage
+- Milestone 2 Phase 4 Stream A review completed (`2026-03-12`) and tasks moved to `DONE`:
+  - Approved and moved to `DONE`:
+    - `P2.4.6` (`EDA-121`)
+    - `P2.4.7` (`EDA-122`)
+    - `P2.4.8` (`EDA-123`)
+  - Review outcomes:
+    - the run-ledger store persists queued creation, queued/running/terminal transitions, and bounded runtime snapshot metadata in line with the Phase 4 contract
+    - run-item recording keeps parent counters aligned with stored candidate outcomes, and bounded error summaries/details avoid storing raw transcript or provider payloads
+    - deterministic run-ledger tests cover valid transition flow, invalid transition rejection, attempted-versus-skipped counter behavior, bounded error detail trimming, and non-running item rejection
+  - Review validation status:
+    - `python -m compileall app/services/grading_runs.py app/services/__init__.py tests/test_grading_runs.py` passed
+    - `pytest tests/test_grading_runs.py -q` passed (`7 passed`)
+- Milestone 2 Phase 4 Gate 4.0 review completed (`2026-03-12`) and tasks moved to `DONE`:
+  - Approved and moved to `DONE`:
+    - `P2.4.1` (`EDA-116`)
+    - `P2.4.2` (`EDA-117`)
+    - `P2.4.3` (`EDA-118`)
+    - `P2.4.4` (`EDA-119`)
+    - `P2.4.5` (`EDA-120`)
+  - Review outcomes:
+    - the Gate 4.0 design record is explicit about `super_admin`-only access, `202 Accepted` manual-trigger semantics, duplicate-window protection, `skipped_existing` handling, and counter invariants
+    - the additive run-ledger ORM models and Alembic revision align with the Phase 4 contract and preserve prior `conversation_grades` behavior
+    - the Phase 4 config surface, API schemas, and scaffold-first service boundaries are consistent with the existing Phase 3/3.5 grading runtime and validated by targeted compile and pytest checks
+  - Review validation status:
+    - `python -m compileall app/models app/core app/schemas app/services tests/test_grading_config.py tests/test_grading_schemas.py` passed
+    - `pytest tests/test_grading_config.py tests/test_grading_schemas.py -q` passed (`24 passed`)
+- Milestone 2 Phase 4 Kanban tasks created (`2026-03-11`):
+  - pre-creation board check confirmed there were no `IN REVIEW` issues on project `aiva-dashboard-be`
+  - `P2.4.1` through `P2.4.17` created on project `aiva-dashboard-be`
+  - issue range: `EDA-116` through `EDA-132`
+  - issue descriptions include acceptance criteria, dependencies, expected file targets, and testing/validation requirements aligned to `docs/milestone-2/m2-phase-4.md`
+- Milestone 2 Phase 4 Gate 4.0 execution completed (`2026-03-12`) and tasks moved to `IN REVIEW`:
+  - `P2.4.1` (`EDA-116`): Phase 4 batch-run decisions are now explicit in `docs/milestone-2/m2-phase-4.md` and `docs/milestone-2/milestone-notes.md`, including the `super_admin`-only access matrix, `202 Accepted` manual-trigger semantics, duplicate-window handling, `skipped_existing` outcome, and counter invariants
+  - `P2.4.2` (`EDA-117`): additive run-ledger ORM models and Alembic revision `b2f9b9d5d40e_add_grading_run_tables.py` added for `grading_runs` / `grading_run_items` with indexes, foreign keys, and run-item uniqueness per candidate within a run
+  - `P2.4.3` (`EDA-118`): Phase 4 scheduler/batch settings and shared run-status constants added in `app/core`, `.env.example`, and `tests/test_grading_config.py`
+  - `P2.4.4` (`EDA-119`): typed request/response/error schemas for manual trigger and run-history payloads added in `app/schemas/grading_runs.py` with schema coverage added in `tests/test_grading_schemas.py`
+  - `P2.4.5` (`EDA-120`): Phase 4 service boundary modules scaffolded under `app/services/grading_runs.py`, `app/services/grading_batch.py`, and `app/services/grading_scheduler.py`, with exports wired through `app/services/__init__.py`
+  - Gate 4.0 validation status:
+    - `python -m compileall app/models app/core app/schemas app/services tests/test_grading_config.py tests/test_grading_schemas.py` passed
+    - `pytest tests/test_grading_config.py tests/test_grading_schemas.py -q` passed (`24 passed`)
+    - isolated outside-sandbox PostgreSQL smoke validation passed for `alembic upgrade head -> downgrade 7f0f67f3d1f2 -> upgrade head`, confirming the new `grading_runs` / `grading_run_items` tables and indexes appear and roll back cleanly without altering prior revisions
 - Milestone 2 Phase 3.5 Stream D review completed (`2026-03-11`) and tasks moved to `DONE`:
   - Approved and moved to `DONE`:
     - `P2.35.15` (`EDA-114`)
@@ -478,7 +575,7 @@
       - pre/post source table counts unchanged (`Arabia Insurance Chats=9090`, `usage_notifications=0`)
 
 ## Next Recommended Action
-- Begin Gate 4.0 for Phase 4 batch-run contract, run-history schema, and execution-policy design.
+- Plan Milestone 2 Phase 5 work against the now-approved Phase 4 run ledger, scheduler constraints, and documented operational handoff risks.
 
 ## Notes
 - Kanban MCP is reachable and synchronized with current execution state.

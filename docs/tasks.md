@@ -79,7 +79,7 @@ Last Updated: `2026-03-02` (Post-completion Stream A review: `P1.2.2` approved; 
 
 ## Milestone 2: AI Grading, Monitoring, and Access Foundations
 Status: `IN PROGRESS`  
-Last Updated: `2026-03-11` (Phase 3.5 Stream D review completed; `P2.35.15` and `P2.35.16` moved to `DONE`)
+Last Updated: `2026-03-12` (Phase 4 Stream D review completed; `P2.4.15` through `P2.4.17` moved to `DONE`)
 
 ## Phase 1 - Gate 1.0 (Shared Milestone 2 Data Contracts)
 - [x] `P2.1.1 - Design - Finalize customer-day grade grain and canonical identity contract - Gate (Independent)`
@@ -191,28 +191,28 @@ Last Updated: `2026-03-11` (Phase 3.5 Stream D review completed; `P2.35.15` and 
 Phase dependency note: Phase 3.5 is complete; Phase 4 batch/run-management work should start from the validated file-based multi-prompt runtime.
 
 ## Gate 4.0
-- [ ] `P2.4.1 - Design - Finalize batch run contract, statuses, idempotency, and access matrix - Gate (Independent)`
-- [ ] `P2.4.2 - DB - Add grading run and run-item schema for durable history - Gate (Dependent)` (`P2.4.1`)
-- [ ] `P2.4.3 - Config - Add batch execution and scheduler settings contract - Gate (Dependent)` (`P2.4.1`)
-- [ ] `P2.4.4 - API - Define grading run trigger/history schemas and error payloads - Gate (Dependent)` (`P2.4.1`)
-- [ ] `P2.4.5 - Service - Scaffold grading batch execution and run-tracking module boundaries - Gate (Dependent)` (`P2.4.2`, `P2.4.4`)
+- [x] `P2.4.1 - Design - Finalize batch run contract, statuses, idempotency, and access matrix - Gate (Independent)` - `DONE` (`docs/milestone-2/m2-phase-4.md`, `docs/milestone-2/milestone-notes.md`) (review approved `2026-03-12`)
+- [x] `P2.4.2 - DB - Add grading run and run-item schema for durable history - Gate (Dependent)` (`P2.4.1`) - `DONE` (`app/models/grading_runs.py`, `app/models/__init__.py`, `alembic/versions/b2f9b9d5d40e_add_grading_run_tables.py`) (review approved `2026-03-12`)
+- [x] `P2.4.3 - Config - Add batch execution and scheduler settings contract - Gate (Dependent)` (`P2.4.1`) - `DONE` (`app/core/constants.py`, `app/core/config.py`, `app/core/__init__.py`, `.env.example`, `tests/test_grading_config.py`) (review approved `2026-03-12`)
+- [x] `P2.4.4 - API - Define grading run trigger/history schemas and error payloads - Gate (Dependent)` (`P2.4.1`) - `DONE` (`app/schemas/grading_runs.py`, `app/schemas/__init__.py`, `tests/test_grading_schemas.py`) (review approved `2026-03-12`)
+- [x] `P2.4.5 - Service - Scaffold grading batch execution and run-tracking module boundaries - Gate (Dependent)` (`P2.4.2`, `P2.4.4`) - `DONE` (`app/services/grading_runs.py`, `app/services/grading_batch.py`, `app/services/grading_scheduler.py`, `app/services/__init__.py`) (review approved `2026-03-12`)
 
 ## Stream A (Run Ledger Persistence)
-- [ ] `P2.4.6 - Service - Implement grading run lifecycle persistence and status transitions - Stream A (Dependent)` (`P2.4.5`)
-- [ ] `P2.4.7 - Service - Implement run-item result recording and aggregated counters - Stream A (Dependent)` (`P2.4.6`)
-- [ ] `P2.4.8 - Test - Add deterministic run-ledger persistence tests - Stream A (Dependent)` (`P2.4.7`)
+- [x] `P2.4.6 - Service - Implement grading run lifecycle persistence and status transitions - Stream A (Dependent)` (`P2.4.5`) - `DONE` (review approved `2026-03-12`; queued/running/terminal transitions, runtime snapshots, and invalid-transition rejection verified in `app/services/grading_runs.py` and `tests/test_grading_runs.py`)
+- [x] `P2.4.7 - Service - Implement run-item result recording and aggregated counters - Stream A (Dependent)` (`P2.4.6`) - `DONE` (review approved `2026-03-12`; run-item persistence, bounded error storage, and parent counter updates verified in `app/services/grading_runs.py` and `tests/test_grading_runs.py`)
+- [x] `P2.4.8 - Test - Add deterministic run-ledger persistence tests - Stream A (Dependent)` (`P2.4.7`) - `DONE` (review approved `2026-03-12`; `tests/test_grading_runs.py` covers run creation, state transitions, counter updates, and non-running rejection; targeted pytest passed: `7 passed`)
 
 ## Stream B (Batch Executor and Idempotent Date Windows)
-- [ ] `P2.4.9 - Service - Implement date-window planning with scheduled/manual skip-rerun policy - Stream B (Dependent)` (`P2.4.5`)
-- [ ] `P2.4.10 - Service - Implement batch executor over customer-day candidates with advisory locking - Stream B (Dependent)` (`P2.4.7`, `P2.4.9`)
-- [ ] `P2.4.11 - Test - Add batch executor tests for scheduled, rerun, and mixed-failure runs - Stream B (Dependent)` (`P2.4.10`)
+- [x] `P2.4.9 - Service - Implement date-window planning with scheduled/manual skip-rerun policy - Stream B (Dependent)` (`P2.4.5`) - `DONE` (Kanban already reflected completion; `app/services/grading_batch.py` now plans previous-day GST and bounded manual windows and applies skip-vs-rerun candidate selection deterministically)
+- [x] `P2.4.10 - Service - Implement batch executor over customer-day candidates with advisory locking - Stream B (Dependent)` (`P2.4.7`, `P2.4.9`) - `DONE` (Kanban already reflected completion; `app/services/grading_batch.py` now executes advisory-lock-protected runs and records queued/running/terminal outcomes through the run ledger)
+- [x] `P2.4.11 - Test - Add batch executor tests for scheduled, rerun, and mixed-failure runs - Stream B (Dependent)` (`P2.4.10`) - `DONE` (`tests/test_grading_batch.py` covers scheduled mixed outcomes, rerun reprocessing, duplicate-window rejection, advisory-lock failure, and manual-window validation)
 
 ## Stream C (Manual Trigger and Run History API)
-- [ ] `P2.4.12 - Service - Implement manual run trigger/list/detail service wrappers and access checks - Stream C (Dependent)` (`P2.4.4`, `P2.4.10`)
-- [ ] `P2.4.13 - API - Add protected grading run trigger and history endpoints - Stream C (Dependent)` (`P2.4.12`)
-- [ ] `P2.4.14 - Test - Add grading run API tests for auth, validation, and history payloads - Stream C (Dependent)` (`P2.4.13`)
+- [x] `P2.4.12 - Service - Implement manual run trigger/list/detail service wrappers and access checks - Stream C (Dependent)` (`P2.4.4`, `P2.4.10`) - `DONE` (`app/services/grading_runs.py`, `app/services/grading_batch.py`, `app/services/__init__.py`, `tests/test_grading_run_services.py`, `tests/test_grading_batch.py`; rereview approved after `persist_failed_run()` committed post-`running` failure transitions and regression coverage locked in the rollback path)
+- [x] `P2.4.13 - API - Add protected grading run trigger and history endpoints - Stream C (Dependent)` (`P2.4.12`) - `DONE` (`app/api/routes/grading_runs.py`, `app/api/routes/__init__.py`, `app/api/router.py`, `app/main.py`; rereview approved after grading-run GET/POST schema validation was normalized to the documented `invalid_date_window` error envelope)
+- [x] `P2.4.14 - Test - Add grading run API tests for auth, validation, and history payloads - Stream C (Dependent)` (`P2.4.13`) - `DONE` (`tests/test_grading_runs_api.py`, `tests/test_grading_batch.py`; compile passed; unrestricted grading-run pytest slice passed `51 passed` after schema-level invalid-payload/query coverage was added and rereview approved)
 
 ## Stream D (Daily Scheduling, Phase Validation, and Handoff)
-- [ ] `P2.4.15 - Infra - Add previous-day scheduler hook and stale-run recovery path - Stream D (Dependent)` (`P2.4.10`)
-- [ ] `P2.4.16 - QA - Run compile and targeted pytest verification for batch/run-management scope - Stream D (Dependent)` (`P2.4.11`, `P2.4.14`, `P2.4.15`)
-- [ ] `P2.4.17 - Docs - Update task/progress docs with Phase 4 execution notes and Phase 5/6 handoff risks - Stream D (Dependent)` (`P2.4.16`)
+- [x] `P2.4.15 - Infra - Add previous-day scheduler hook and stale-run recovery path - Stream D (Dependent)` (`P2.4.10`) - `DONE` (review approved `2026-03-12`; scheduler lifecycle and stale-run recovery verified in `app/main.py`, `app/services/grading_scheduler.py`, `app/services/__init__.py`, `app/core/constants.py`, `app/core/__init__.py`, and `tests/test_grading_scheduler.py`; targeted compile and unrestricted pytest slice passed `54 passed`)
+- [x] `P2.4.16 - QA - Run compile and targeted pytest verification for batch/run-management scope - Stream D (Dependent)` (`P2.4.11`, `P2.4.14`, `P2.4.15`) - `DONE` (review approved `2026-03-12`; `python -m compileall app tests` passed; sandboxed targeted pytest hit the expected Docker/Testcontainers npipe blocker; unrestricted targeted pytest slice passed `54 passed`)
+- [x] `P2.4.17 - Docs - Update task/progress docs with Phase 4 execution notes and Phase 5/6 handoff risks - Stream D (Dependent)` (`P2.4.16`) - `DONE` (review approved `2026-03-12`; `docs/tasks.md`, `docs/project-progress.md`, and `docs/milestone-2/m2-phase-4.md` are synchronized with Stream D review outcomes and Phase 5/6 handoff risks)

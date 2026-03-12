@@ -8,6 +8,7 @@ from pydantic import Field, ValidationError, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.constants import (
+    GRADING_BATCH_TIMEZONE,
     GRADING_DEFAULT_MODEL,
     GRADING_DEFAULT_PROMPT_VERSION,
     GRADING_PROMPT_DOMAIN_ORDER,
@@ -16,6 +17,7 @@ from app.core.constants import (
     GRADING_PROMPT_PACK_BASE_DIR,
     GRADING_PROMPT_REQUIRED_FILES,
     GRADING_PROMPT_SYSTEM_PROMPT_FILE,
+    GRADING_PROVIDER_MOCK,
     GRADING_PROVIDER_OPENAI_COMPATIBLE,
     GRADING_SUPPORTED_PROVIDERS,
 )
@@ -99,6 +101,28 @@ class Settings(BaseSettings):
     grading_base_url: str | None = Field(
         default=None,
         description="Optional base URL override for OpenAI-compatible grading providers.",
+    )
+    grading_batch_scheduler_enabled: bool = Field(
+        default=False,
+        description="Enable the in-process previous-day grading scheduler.",
+    )
+    grading_batch_scheduler_hour_gst: int = Field(
+        default=1,
+        description=(
+            "GST hour (0-23) when the previous-day grading scheduler should run."
+        ),
+    )
+    grading_batch_max_backfill_days: int = Field(
+        default=31,
+        description="Maximum inclusive date-window span allowed for manual backfill runs.",
+    )
+    grading_batch_stale_run_timeout_minutes: int = Field(
+        default=180,
+        description="Minutes after which an in-progress run is considered stale.",
+    )
+    grading_batch_allow_mock_provider_runs: bool = Field(
+        default=False,
+        description="Allow batch execution to run with GRADING_PROVIDER=mock outside tests.",
     )
 
     @field_validator("database_url")
@@ -204,6 +228,35 @@ class Settings(BaseSettings):
             raise ValueError("GRADING_MAX_RETRIES must be less than or equal to 5.")
         return value
 
+    @field_validator("grading_batch_scheduler_hour_gst")
+    @classmethod
+    def validate_grading_batch_scheduler_hour_gst(cls, value: int) -> int:
+        if value < 0 or value > 23:
+            raise ValueError("GRADING_BATCH_SCHEDULER_HOUR_GST must be between 0 and 23.")
+        return value
+
+    @field_validator("grading_batch_max_backfill_days")
+    @classmethod
+    def validate_grading_batch_max_backfill_days(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("GRADING_BATCH_MAX_BACKFILL_DAYS must be greater than 0.")
+        if value > 366:
+            raise ValueError("GRADING_BATCH_MAX_BACKFILL_DAYS must be less than or equal to 366.")
+        return value
+
+    @field_validator("grading_batch_stale_run_timeout_minutes")
+    @classmethod
+    def validate_grading_batch_stale_run_timeout_minutes(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError(
+                "GRADING_BATCH_STALE_RUN_TIMEOUT_MINUTES must be greater than 0."
+            )
+        if value > 7 * 24 * 60:
+            raise ValueError(
+                "GRADING_BATCH_STALE_RUN_TIMEOUT_MINUTES must be less than or equal to 10080."
+            )
+        return value
+
     @field_validator("grading_api_key", "grading_base_url")
     @classmethod
     def normalize_optional_grading_fields(cls, value: str | None) -> str | None:
@@ -226,6 +279,15 @@ class Settings(BaseSettings):
             root_dir=self.resolved_grading_prompt_assets_dir,
             version=self.grading_prompt_version,
         )
+        if (
+            self.grading_batch_scheduler_enabled
+            and self.grading_provider == GRADING_PROVIDER_MOCK
+            and not self.grading_batch_allow_mock_provider_runs
+        ):
+            raise ValueError(
+                "GRADING_BATCH_SCHEDULER_ENABLED requires a non-mock provider unless "
+                "GRADING_BATCH_ALLOW_MOCK_PROVIDER_RUNS is true."
+            )
         return self
 
     @property
@@ -241,6 +303,10 @@ class Settings(BaseSettings):
     @property
     def resolved_grading_prompt_assets_dir(self) -> Path:
         return self.resolved_grading_prompt_assets_base_dir / self.grading_prompt_version
+
+    @property
+    def grading_batch_timezone(self) -> str:
+        return GRADING_BATCH_TIMEZONE
 
 
 @lru_cache(maxsize=1)

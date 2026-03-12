@@ -26,14 +26,15 @@
   - `target_start_date`, `target_end_date`
   - `rerun_existing`
   - provider/runtime snapshot fields (`provider`, `model`, `prompt_version`)
-  - aggregate counters (`candidate_count`, `success_count`, `empty_transcript_count`, `provider_error_count`, `parse_error_count`)
+  - aggregate counters (`candidate_count`, `attempted_count`, `success_count`, `skipped_existing_count`, `empty_transcript_count`, `provider_error_count`, `parse_error_count`)
   - `requested_by_account_id` (nullable for scheduled runs)
+  - bounded terminal `error_message` for run-level aborts
   - `started_at`, `finished_at`, `created_at`, `updated_at`
 - Planning baseline for `grading_run_items`:
   - `id`
   - `run_id`
   - candidate key fields (`identity_type`, `conversation_identity`, `grade_date`)
-  - `status` / result code
+  - `status` / result code (`success`, `skipped_existing`, `empty_transcript`, `provider_error`, `parse_error`)
   - optional `grade_id` reference for successful writes
   - bounded `error_message` / `error_details`
   - timestamps for attempt lifecycle
@@ -110,11 +111,16 @@
   - a bounded `start_date` / `end_date`
 - Manual trigger defaults to `rerun_existing = false`.
 - Manual reruns/backfills may opt into `rerun_existing = true`, which relies on Phase 3 overwrite-safe upsert behavior.
-- Pre-go-live retroactive backfill rules remain an explicit Gate 4.0 decision because the SRS still lists retroactive grading scope as open/deferred.
+- Manual windows must end on the previous GST business day or earlier; Phase 4 does not support triggering the current partial GST day.
+- Phase 4 does not impose a separate hardcoded go-live lower bound; the only date bound is the configured maximum backfill span plus available source data.
+- Manual run-mode mapping is explicit:
+  - `rerun_existing = false` -> `backfill`
+  - `rerun_existing = true` -> `rerun`
 
 ### Run Outcome Model
 - Candidate-level outcomes:
   - `success`
+  - `skipped_existing`
   - `empty_transcript`
   - `provider_error`
   - `parse_error`
@@ -124,12 +130,32 @@
   - `completed`
   - `completed_with_failures`
   - `failed`
-- Mixed success/failure runs should normally end as `completed_with_failures`, not `failed`, unless the run itself aborts before candidate execution can finish meaningfully.
+- Counter semantics are explicit:
+  - `candidate_count` = all customer-day candidates discovered inside the target window before rerun filtering
+  - `attempted_count` = candidates actually sent through `grade_customer_day()`
+  - `skipped_existing_count` = candidates skipped because `rerun_existing = false` and a canonical grade row already exists
+- Terminal-status rules are explicit:
+  - `completed` = run finished without provider/parser/empty-transcript candidate failures; `skipped_existing` does not downgrade the run
+  - `completed_with_failures` = run finished processing candidates but at least one candidate ended as `empty_transcript`, `provider_error`, or `parse_error`
+  - `failed` = run could not execute or complete meaningfully because of a run-level abort (for example invalid live-provider configuration, lock acquisition failure after queueing, or unrecoverable persistence/runtime failure)
 
 ### Duplicate-Run Safety
 - Phase 4 should prevent simultaneous execution of the same target window.
 - Planning baseline: use a deterministic advisory-lock key derived from the target date window before a run transitions to `running`.
+- A duplicate active window should be rejected deterministically for manual trigger callers and scheduled launches before a second execution begins.
+- Advisory locking remains the final race-safe guard if two callers pass preflight concurrently.
 - Repeat execution after a prior run completes is allowed and must be visible as a new `grading_runs` record.
+
+### Trigger and Access Behavior
+- `POST /api/v1/grading/runs` should validate the request, create a queued run row, start execution asynchronously in-process, and return `202 Accepted` with the created run summary instead of waiting for terminal completion in the HTTP request.
+- Current role-scoping is explicit for Phase 4:
+  - `super_admin`: allowed to trigger manual runs and read run history
+  - `company_admin`: denied for trigger/history in Phase 4 because the current schema has no tenant scoping and run history is global operational data
+  - `analyst`: denied for trigger/history in Phase 4
+- Scheduler deployment assumption is explicit:
+  - in-process scheduling is acceptable for the current backend
+  - duplicate-window safety must still rely on database-backed run-state checks plus advisory locking
+  - only one deployed instance should have the scheduler enabled until an external orchestrator exists
 
 ## Gate 4.0 - Batch Run Contract and Operational Safety
 
@@ -148,6 +174,82 @@
 - [ ] Typed schemas exist for manual trigger and run-history APIs.
 - [ ] Service boundaries are established for run ledger, executor, and scheduler work.
 
+### P2.4.1 Decision Record - Batch Run Contract, Idempotency, and Access Matrix
+
+#### Decision Summary
+- Phase 4 keeps the canonical customer-day grading unit from Phase 3 and adds a separate operational run ledger instead of extending `conversation_grades`.
+- Scheduled execution remains previous-day GST only and is modeled as `trigger_type=scheduled`, `run_mode=daily`, `rerun_existing=false`.
+- Manual execution is always `trigger_type=manual` and is split into:
+  - `run_mode=backfill` when `rerun_existing=false`
+  - `run_mode=rerun` when `rerun_existing=true`
+- Manual trigger returns `202 Accepted` after queueing a run and handing execution off to an in-process async task.
+
+#### Access Matrix
+
+| Endpoint / Action | `super_admin` | `company_admin` | `analyst` |
+|---|---|---|---|
+| `POST /api/v1/grading/runs` | allowed | denied | denied |
+| `GET /api/v1/grading/runs` | allowed | denied | denied |
+| `GET /api/v1/grading/runs/{run_id}` | allowed | denied | denied |
+| Optional `GET /api/v1/grading/runs/{run_id}/items` | allowed | denied | denied |
+
+#### Why Phase 4 Is `super_admin`-Only
+- Phase 2 introduced roles, but the current backend has no tenant/company scoping on accounts or grading data.
+- Run history is global operational data and can expose provider/runtime failures across all customers.
+- Granting `company_admin` access now would effectively expose platform-wide operator data without the tenant boundaries required to scope it safely.
+
+#### Finalized Status and Counter Vocabulary
+- Run statuses:
+  - `queued`
+  - `running`
+  - `completed`
+  - `completed_with_failures`
+  - `failed`
+- Run-item statuses:
+  - `success`
+  - `skipped_existing`
+  - `empty_transcript`
+  - `provider_error`
+  - `parse_error`
+- Counter invariants:
+  - `candidate_count = attempted_count + skipped_existing_count`
+  - `attempted_count = success_count + empty_transcript_count + provider_error_count + parse_error_count`
+
+#### Idempotency and Duplicate-Window Rules
+- A run window is defined strictly by `target_start_date` + `target_end_date`.
+- Multiple completed runs for the same window are allowed and represent distinct operator/scheduler events.
+- Concurrent execution for the same window is not allowed.
+- Enforcement path:
+  - preflight check for existing `queued` or `running` runs on the same window
+  - advisory lock acquisition before `queued -> running`
+  - if the lock cannot be acquired after queueing, the run terminates as `failed` with a bounded run-level error message instead of remaining ambiguous
+
+#### Manual Window Validation Rules
+- Request shapes:
+  - one `grade_date`, or
+  - one `start_date` + `end_date`
+- Invalid shapes:
+  - mixing `grade_date` with range fields
+  - missing one side of a range
+  - inverted range (`start_date > end_date`)
+  - a target end date later than the previous GST day
+  - a date span wider than the configured manual backfill maximum
+- Phase 4 does not add a separate fixed go-live lower bound; bounded history is controlled by configuration rather than a hardcoded date.
+
+#### Run-Level Failure Model
+- `EMPTY_TRANSCRIPT`, `PROVIDER_ERROR`, and `PARSE_ERROR` remain controlled candidate outcomes from Phase 3 and must never be surfaced as uncategorized exceptions in normal batch summaries.
+- Run-level `failed` is reserved for execution-abort conditions such as:
+  - invalid non-test provider/runtime configuration
+  - duplicate-window advisory-lock rejection after queueing
+  - unrecoverable persistence/runtime failure before candidate processing can finish coherently
+- Phase 4 stores bounded operational error summaries only; it does not persist raw transcripts or raw provider responses in run-ledger tables.
+
+### Gate 4.0 Execution Notes (Started `2026-03-11`)
+- `P2.4.1` completed:
+  - finalized the run-mode mapping, counter vocabulary, duplicate-window rules, manual-trigger response model, and elevated access matrix in this phase doc
+  - resolved the original planning questions by choosing `super_admin`-only access, config-bounded backfill without a hardcoded go-live lower bound, and asynchronous `202 Accepted` manual execution
+  - clarified that `skipped_existing` is an expected non-failure candidate outcome distinct from the Phase 3 controlled failure results
+
 ## Stream A - Run Ledger Persistence
 
 | Task ID | Title | Goal / Acceptance Criteria | Dependencies | Files to Modify/Create (Expected) | Testing / Validation |
@@ -162,6 +264,17 @@
 - [ ] Parent-run counters remain consistent with stored run-item rows.
 - [ ] Stream A tests cover both normal and invalid state-transition paths.
 
+### Stream A Review Notes (`2026-03-12`)
+- `P2.4.6` approved:
+  - `SqlAlchemyGradingRunStore.create_run()` and `update_run_status()` now persist the queued-first lifecycle, runtime snapshot metadata, and deterministic invalid-transition rejection required by the Phase 4 contract.
+- `P2.4.7` approved:
+  - `create_run_item()` records per-candidate outcomes only while the parent run is `running`, trims bounded error fields, and keeps parent counters aligned with attempted versus skipped outcomes.
+- `P2.4.8` approved:
+  - `tests/test_grading_runs.py` locks in run creation, valid and invalid state transitions, terminal status derivation, bounded error trimming, and non-running item rejection.
+- Validation:
+  - `python -m compileall app/services/grading_runs.py app/services/__init__.py tests/test_grading_runs.py` passed
+  - `pytest tests/test_grading_runs.py -q` passed (`7 passed`)
+
 ## Stream B - Batch Executor and Idempotent Date Windows
 
 | Task ID | Title | Goal / Acceptance Criteria | Dependencies | Files to Modify/Create (Expected) | Testing / Validation |
@@ -171,11 +284,16 @@
 | B.3 | `P2.4.11 - Test - Add batch executor tests for scheduled, rerun, and mixed-failure runs - Stream B (Dependent)` | Add deterministic coverage for completed, completed-with-failures, and aborted run outcomes. | `P2.4.10` | `tests/test_grading_batch.py` (new) | `pytest tests/test_grading_batch.py -q`. |
 
 ### Stream B Acceptance Criteria
-- [ ] Scheduled runs target the previous GST day deterministically.
-- [ ] Manual date windows are validated and bounded by config.
-- [ ] Batch execution records candidate results without treating controlled failures as unhandled exceptions.
-- [ ] Duplicate concurrent execution for the same target window is blocked or rejected deterministically.
-- [ ] Stream B tests cover rerun-safe overwrite behavior and mixed-outcome summaries.
+- [x] Scheduled runs target the previous GST day deterministically.
+- [x] Manual date windows are validated and bounded by config.
+- [x] Batch execution records candidate results without treating controlled failures as unhandled exceptions.
+- [x] Duplicate concurrent execution for the same target window is blocked or rejected deterministically.
+- [x] Stream B tests cover rerun-safe overwrite behavior and mixed-outcome summaries.
+
+### Stream B Execution Notes (Synced `2026-03-12`)
+- `P2.4.9` already had completed code and `DONE` status on Kanban when Stream C work started; `plan_manual_batch_window()` and `plan_batch_candidates()` now anchor previous-day scheduling, bounded manual windows, and skip-versus-rerun candidate planning in `app/services/grading_batch.py`.
+- `P2.4.10` already had completed code and `DONE` status on Kanban when Stream C work started; `execute_grading_batch()` now executes advisory-lock-protected runs and records queued/running/terminal state through the Stream A run ledger.
+- `P2.4.11` already had completed code and `DONE` status on Kanban when Stream C work started; `tests/test_grading_batch.py` covers scheduled mixed outcomes, rerun reprocessing, duplicate-window rejection, advisory-lock failure, and manual-window validation.
 
 ## Stream C - Manual Trigger and Run History API
 
@@ -186,10 +304,39 @@
 | C.3 | `P2.4.14 - Test - Add grading run API tests for auth, validation, and history payloads - Stream C (Dependent)` | Cover elevated-access behavior, invalid date-window requests, and run-history responses. | `P2.4.13` | `tests/test_grading_runs_api.py` (new), `tests/conftest.py` (fixture extensions if required) | `pytest tests/test_grading_runs_api.py -q`. |
 
 ### Stream C Acceptance Criteria
-- [ ] Manual trigger requests validate date-window and rerun flags consistently.
-- [ ] Run-history endpoints return stable summary/detail payloads for operators.
-- [ ] Protected grading-run routes enforce the finalized elevated-access policy.
-- [ ] Stream C tests cover auth failures, validation failures, and populated history responses.
+- [x] Manual trigger requests validate date-window and rerun flags consistently.
+- [x] Run-history endpoints return stable summary/detail payloads for operators.
+- [x] Protected grading-run routes enforce the finalized elevated-access policy.
+- [x] Stream C tests cover auth failures, validation failures, and populated history responses.
+
+### Stream C Execution Notes (Completed `2026-03-12`; tasks moved to `IN REVIEW`)
+- `P2.4.12`: `prepare_manual_grading_run()`, `list_grading_run_history()`, and `get_grading_run_history_detail()` now enforce `super_admin` access, validate/manual-window rules, reject duplicate active windows before queueing, and expose stable run-history payloads through `app/services/grading_batch.py`, `app/services/grading_runs.py`, and `tests/test_grading_run_services.py`.
+- `P2.4.13`: protected `/api/v1/grading/runs` trigger/list/detail routes now call the new service wrappers, translate operator-facing error payloads, and queue background batch execution through `app/api/routes/grading_runs.py`, `app/api/routes/__init__.py`, and `app/api/router.py`.
+- `P2.4.14`: `tests/test_grading_runs_api.py` now locks in `202` queueing, `401`/`403` auth behavior, custom `422` invalid-window errors, `409` duplicate-window conflicts, and populated run-history list/detail responses.
+- Validation:
+  - `python -m compileall app/api/routes/grading_runs.py app/api/routes/__init__.py app/api/router.py app/services/grading_batch.py app/services/grading_runs.py app/services/__init__.py tests/test_grading_run_services.py tests/test_grading_runs_api.py` passed
+  - sandboxed `pytest tests/test_grading_runs.py tests/test_grading_batch.py tests/test_grading_run_services.py tests/test_grading_runs_api.py -q` hit the expected Docker/Testcontainers npipe permission blocker before fixture startup (`CreateFile Access is denied`)
+  - unrestricted `pytest tests/test_grading_runs.py tests/test_grading_batch.py tests/test_grading_run_services.py tests/test_grading_runs_api.py -q` passed (`47 passed`)
+  - unrestricted `pytest tests/test_grading_runs_api.py -q` passed (`9 passed`) after the final `422` status-constant cleanup
+
+### Stream C Review-Fix Notes (`2026-03-12`; tasks returned to `IN REVIEW`)
+- `P2.4.12`: `persist_failed_run()` now commits the failed run transition even when `GradingBatchRunner.execute_run()` aborts after the run has already reached `running`, and `tests/test_grading_batch.py` adds a rollback-based regression to prove the persisted row stays terminally failed.
+- `P2.4.13`: request-validation failures for `POST /api/v1/grading/runs` and `GET /api/v1/grading/runs` now flow through the stable `GradingRunErrorResponse` envelope via targeted handling in `app/main.py`, so schema-level trigger/list validation no longer falls back to the generic FastAPI/Pydantic `detail` list.
+- `P2.4.14`: API coverage now includes schema-level invalid trigger payloads (`grade_date` mixed with range fields, one-sided range payloads) and invalid list-query ranges, all asserting the custom `invalid_date_window` contract in `tests/test_grading_runs_api.py`.
+- Review-fix validation:
+  - `python -m compileall app/main.py app/services/grading_batch.py tests/test_grading_batch.py tests/test_grading_runs_api.py` passed
+  - unrestricted `pytest tests/test_grading_runs.py tests/test_grading_batch.py tests/test_grading_run_services.py tests/test_grading_runs_api.py -q` passed (`51 passed`)
+
+### Stream C Rereview Notes (`2026-03-12`; tasks moved to `DONE`)
+- `P2.4.12` approved:
+  - failure-path persistence is now durable after `queued -> running`, so operator-visible run history is retained even if the execution session later rolls back.
+- `P2.4.13` approved:
+  - schema-level validation for the Stream C GET/POST routes now resolves to the documented grading-run error envelope without altering unrelated API `422` behavior.
+- `P2.4.14` approved:
+  - the API suite now locks in the previously missing schema-level invalid-payload and invalid-query regressions alongside the existing auth/queue/history coverage.
+- Rereview validation:
+  - `python -m compileall app/main.py app/services/grading_batch.py app/api/routes/grading_runs.py tests/test_grading_batch.py tests/test_grading_runs_api.py tests/test_grading_run_services.py` passed
+  - unrestricted `pytest tests/test_grading_runs.py tests/test_grading_batch.py tests/test_grading_run_services.py tests/test_grading_runs_api.py -q` passed (`51 passed`)
 
 ## Stream D - Daily Scheduling, Phase Validation, and Handoff
 
@@ -200,11 +347,27 @@
 | D.3 | `P2.4.17 - Docs - Update task/progress docs with Phase 4 execution notes and Phase 5/6 handoff risks - Stream D (Dependent)` | Sync docs after execution/review and capture residual operational risks for metrics/monitoring phases. | `P2.4.16` | `docs/tasks.md`, `docs/project-progress.md`, `docs/milestone-2/m2-phase-4.md` | Documentation review for status consistency and handoff readiness. |
 
 ### Stream D Acceptance Criteria
-- [ ] Daily scheduling can launch the previous-day run only when Phase 4 settings are enabled and valid.
-- [ ] Stale in-progress runs are surfaced/recovered deterministically rather than left ambiguous.
-- [ ] Compile checks pass for modified Python modules.
-- [ ] Targeted grading-run test suites pass or any environment blocker is explicitly documented.
-- [ ] Docs are synchronized with execution/review outcomes and Phase 5/6 handoff notes.
+- [x] Daily scheduling can launch the previous-day run only when Phase 4 settings are enabled and valid.
+- [x] Stale in-progress runs are surfaced/recovered deterministically rather than left ambiguous.
+- [x] Compile checks pass for modified Python modules.
+- [x] Targeted grading-run test suites pass or any environment blocker is explicitly documented.
+- [x] Docs are synchronized with execution/review outcomes and Phase 5/6 handoff notes.
+
+### Stream D Execution Notes (Completed `2026-03-12`; tasks moved to `IN REVIEW`)
+- `P2.4.15`: `app/main.py` now starts and stops the in-process grading scheduler inside the FastAPI lifespan, while `app/services/grading_scheduler.py` now recovers stale `queued` / `running` runs, builds previous-day scheduled execution requests, and owns the scheduler loop plus explicit start/stop helpers. Shared scheduler exports and the stale-recovery constant were wired through `app/services/__init__.py`, `app/core/constants.py`, and `app/core/__init__.py`, and deterministic coverage landed in `tests/test_grading_scheduler.py`.
+- `P2.4.16`: validation passed with `python -m compileall app/main.py app/services/grading_scheduler.py app/services/__init__.py app/core/constants.py app/core/__init__.py tests/test_grading_scheduler.py` and `python -m compileall app tests`. The sandboxed targeted grading-run pytest slice hit the expected Docker/Testcontainers Windows npipe blocker before fixture startup, and the unrestricted rerun passed with `54 passed`.
+- `P2.4.17`: `docs/tasks.md`, `docs/project-progress.md`, and this phase plan now reflect the Stream D scheduler implementation, QA outcomes, and the operational handoff notes for downstream metrics and monitoring work.
+
+### Stream D Review Notes (Completed `2026-03-12`; tasks moved to `DONE`)
+- `P2.4.15`: approved. Review confirmed the FastAPI lifespan wiring, deterministic stale-run recovery, and previous-day scheduled request construction align with the Phase 4 scheduler contract without leaving ambiguous active runs behind.
+- `P2.4.16`: approved. Review reran `python -m compileall app tests` and the targeted Phase 4 scheduler/run-management verification slice, which passed unrestricted with `54 passed`.
+- `P2.4.17`: approved. Review confirmed `docs/tasks.md`, `docs/project-progress.md`, and this phase plan are now consistent with the board state, validation evidence, and downstream handoff risks.
+
+### Phase 5/6 Handoff Risks
+- Scheduler deployment remains single-instance only until an external orchestrator exists. Advisory locking prevents same-window overlap inside the database, but multiple app hosts with scheduling enabled would still create avoidable duplicate attempts.
+- Stale-run recovery is now deterministic and timeout-based. Phase 5 and Phase 6 rollout planning should revisit `GRADING_BATCH_STALE_RUN_TIMEOUT_MINUTES` against real provider latency and operational alerting expectations before enabling live daily scheduling broadly.
+- Scheduler-enabled non-test runs still require a non-mock provider unless `GRADING_BATCH_ALLOW_MOCK_PROVIDER_RUNS=true`. Deployment configuration for metrics/monitoring environments must keep that safety gate aligned with whether live grading is intended.
+- Targeted grading-run validation still requires unrestricted Docker/Testcontainers access on this workstation because sandboxed runs fail at the Windows npipe boundary (`CreateFile Access is denied`).
 
 ## Suggested Files by Concern
 - Config and constants:
@@ -292,10 +455,11 @@ Gate 4.0 (P2.4.1 - P2.4.5 run contract + schema + scaffolds) -------+
 - Phase 4 may introduce a minimal role guard helper if elevated access is required beyond the Phase 2 authenticated baseline.
 
 ### Open Questions
-- Should run-history read access include `company_admin`, or be limited to `super_admin` only?
-- Is retroactive backfill allowed before the Milestone 2 go-live date, or should Gate 4.0 enforce a lower bound?
-- Should manual trigger return immediately after queueing a run, or wait for synchronous completion in the initial implementation path?
-- If deployment runs multiple API instances, is the in-process scheduler still acceptable, or should operational automation call the same executor from outside the web process?
+- None currently. Gate 4.0 decisions locked on `2026-03-11`:
+  - run-management endpoints are `super_admin`-only until tenant scoping exists
+  - manual trigger returns `202 Accepted` after queueing and starting in-process execution
+  - historical reruns/backfills are bounded by config rather than a hardcoded milestone go-live date
+  - in-process scheduling remains acceptable provided only one instance enables it and advisory locking guards duplicate windows
 
 ## Estimated Duration (Units)
 - Gate 4.0 (`P2.4.1` - `P2.4.5`): `2.5`

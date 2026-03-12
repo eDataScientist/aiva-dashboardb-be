@@ -10,6 +10,11 @@ from app.schemas.grading_prompts import (
     PromptPackPartialOutputs,
     PromptTemplateSpec,
 )
+from app.schemas.grading_runs import (
+    GradingRunErrorResponse,
+    GradingRunTriggerRequest,
+    GradingRunSummary,
+)
 
 
 def _valid_grading_output_payload() -> dict[str, object]:
@@ -89,6 +94,56 @@ def test_grading_parse_error_rejects_blank_message() -> None:
         GradingParseError(
             code="invalid_json",
             message="   ",
+        )
+
+
+def test_grading_run_trigger_request_accepts_single_grade_date() -> None:
+    request = GradingRunTriggerRequest(grade_date="2026-03-11")
+    assert request.target_start_date.isoformat() == "2026-03-11"
+    assert request.target_end_date.isoformat() == "2026-03-11"
+    assert request.rerun_existing is False
+
+
+def test_grading_run_trigger_request_rejects_mixed_date_shapes() -> None:
+    with pytest.raises(ValidationError):
+        GradingRunTriggerRequest(
+            grade_date="2026-03-11",
+            start_date="2026-03-10",
+            end_date="2026-03-11",
+        )
+
+
+def test_grading_run_summary_rejects_blank_provider_snapshot() -> None:
+    with pytest.raises(ValidationError):
+        GradingRunSummary(
+            id="df35ea32-c0b2-46e4-954e-7707b9d3a62b",
+            trigger_type="manual",
+            run_mode="backfill",
+            status="queued",
+            target_start_date="2026-03-10",
+            target_end_date="2026-03-11",
+            rerun_existing=False,
+            provider="   ",
+            model="mock-grade-v1",
+            prompt_version="v1",
+            candidate_count=0,
+            attempted_count=0,
+            success_count=0,
+            skipped_existing_count=0,
+            empty_transcript_count=0,
+            provider_error_count=0,
+            parse_error_count=0,
+            created_at="2026-03-12T10:00:00",
+            updated_at="2026-03-12T10:00:00",
+        )
+
+
+def test_grading_run_error_response_rejects_blank_details() -> None:
+    with pytest.raises(ValidationError):
+        GradingRunErrorResponse(
+            code="invalid_date_window",
+            message="Date range is invalid.",
+            details=["   "],
         )
 
 
