@@ -84,6 +84,14 @@ This document captures milestone-level planning decisions made during discussion
 - Manual backfill is bounded by configuration only; Phase 4 does not add a separate hardcoded go-live lower-bound date.
 - Duplicate-window protection should use both active-run preflight checks and PostgreSQL advisory locking keyed by target date window.
 
+## Phase 5 Graded Metrics API Direction (`2026-03-13`)
+- Phase 5 should keep the existing Milestone 1 `/api/v1/analytics/*` endpoints unchanged for legacy raw-chat analytics consumers.
+- The new AI Quality Metrics page should consume additive graded-data endpoints under `/api/v1/grading/metrics/*`.
+- Metric correctness should come from `conversation_grades`; `grading_runs` should be read only for freshness metadata.
+- Default metrics windows should end on the previous GST day, use a 30-day default lookback, and reject wider-than-configured spans.
+- Phase 5 access should match the current authenticated analytics baseline (`super_admin`, `company_admin`, and `analyst` allowed) until tenant scoping exists.
+- Intent analytics should expose the canonical 16-code taxonomy with category metadata and optional per-code trend filtering.
+
 ## Phase Ordering (High-Level)
 - Data contract and migrations should come before auth implementation.
 - The data-contract phase should include models needed for auth/accounts as well as Milestone 2 grading/monitoring support.

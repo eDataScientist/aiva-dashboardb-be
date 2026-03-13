@@ -3,9 +3,14 @@
 ## Project
 - Name: `aiva-dashboard-be`
 - Current Milestone: `Milestone 2 - AI Grading, Monitoring, and Access Foundations`
-- Current Phase: `Milestone 2 Phase 4 - Batch Execution and Run Management (review complete)`
+- Current Phase: `Milestone 2 Phase 5 - AI Quality Metrics API (planned)`
 
 ## Current Status
+- Milestone 2 Phase 5 detailed plan created (`2026-03-13`):
+  - added `docs/milestone-2/m2-phase-5.md` with Gate 5.0 plus Streams A-D for graded summary, freshness, trend, intent, API, QA, and docs work
+  - synchronized `docs/tasks.md` with `P2.5.1` through `P2.5.18`
+  - synchronized `docs/milestone-2/milestone-notes.md` with the additive `/api/v1/grading/metrics/*` route strategy, freshness semantics, and access baseline
+  - no Phase 5 Kanban issues were created because project `aiva-dashboard-be` currently has no `TODO` or `IN PROGRESS` tasks and task creation was not requested
 - Milestone 2 Phase 4 Stream D review completed (`2026-03-12`) and tasks moved to `DONE`:
   - Approved and moved to `DONE`:
     - `P2.4.15` (`EDA-130`)
@@ -575,7 +580,7 @@
       - pre/post source table counts unchanged (`Arabia Insurance Chats=9090`, `usage_notifications=0`)
 
 ## Next Recommended Action
-- Plan Milestone 2 Phase 5 work against the now-approved Phase 4 run ledger, scheduler constraints, and documented operational handoff risks.
+- Create or approve Milestone 2 Phase 5 Kanban tasks, then execute Gate 5.0 against the new `docs/milestone-2/m2-phase-5.md` plan.
 
 ## Notes
 - Kanban MCP is reachable and synchronized with current execution state.

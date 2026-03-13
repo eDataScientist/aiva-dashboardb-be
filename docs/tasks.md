@@ -79,7 +79,7 @@ Last Updated: `2026-03-02` (Post-completion Stream A review: `P1.2.2` approved; 
 
 ## Milestone 2: AI Grading, Monitoring, and Access Foundations
 Status: `IN PROGRESS`  
-Last Updated: `2026-03-12` (Phase 4 Stream D review completed; `P2.4.15` through `P2.4.17` moved to `DONE`)
+Last Updated: `2026-03-13` (Phase 5 planning completed; detailed plan added in `docs/milestone-2/m2-phase-5.md`, no Kanban tasks created)
 
 ## Phase 1 - Gate 1.0 (Shared Milestone 2 Data Contracts)
 - [x] `P2.1.1 - Design - Finalize customer-day grade grain and canonical identity contract - Gate (Independent)`
@@ -216,3 +216,34 @@ Phase dependency note: Phase 3.5 is complete; Phase 4 batch/run-management work 
 - [x] `P2.4.15 - Infra - Add previous-day scheduler hook and stale-run recovery path - Stream D (Dependent)` (`P2.4.10`) - `DONE` (review approved `2026-03-12`; scheduler lifecycle and stale-run recovery verified in `app/main.py`, `app/services/grading_scheduler.py`, `app/services/__init__.py`, `app/core/constants.py`, `app/core/__init__.py`, and `tests/test_grading_scheduler.py`; targeted compile and unrestricted pytest slice passed `54 passed`)
 - [x] `P2.4.16 - QA - Run compile and targeted pytest verification for batch/run-management scope - Stream D (Dependent)` (`P2.4.11`, `P2.4.14`, `P2.4.15`) - `DONE` (review approved `2026-03-12`; `python -m compileall app tests` passed; sandboxed targeted pytest hit the expected Docker/Testcontainers npipe blocker; unrestricted targeted pytest slice passed `54 passed`)
 - [x] `P2.4.17 - Docs - Update task/progress docs with Phase 4 execution notes and Phase 5/6 handoff risks - Stream D (Dependent)` (`P2.4.16`) - `DONE` (review approved `2026-03-12`; `docs/tasks.md`, `docs/project-progress.md`, and `docs/milestone-2/m2-phase-4.md` are synchronized with Stream D review outcomes and Phase 5/6 handoff risks)
+
+## Phase 5 - AI Quality Metrics API
+Phase dependency note: Phase 5 should consume persisted `conversation_grades` for aggregates and `grading_runs` only for freshness metadata; existing Milestone 1 `/api/v1/analytics/*` routes remain unchanged for legacy consumers.
+
+## Gate 5.0
+- [ ] `P2.5.1 - Design - Finalize graded metrics contract, freshness semantics, and route access - Gate (Independent)`
+- [ ] `P2.5.2 - DB - Validate grade-read index readiness and add additive indexes if needed - Gate (Dependent)` (`P2.5.1`)
+- [ ] `P2.5.3 - Config - Add metrics query defaults and canonical metric registry - Gate (Dependent)` (`P2.5.1`)
+- [ ] `P2.5.4 - API - Define AI quality metrics schemas and error payloads - Gate (Dependent)` (`P2.5.1`, `P2.5.3`)
+- [ ] `P2.5.5 - Service - Scaffold graded metrics query/module boundaries - Gate (Dependent)` (`P2.5.2`, `P2.5.4`)
+
+## Stream A (Window Summary and Freshness)
+- [ ] `P2.5.6 - Service - Implement window summary aggregates from conversation_grades - Stream A (Dependent)` (`P2.5.5`)
+- [ ] `P2.5.7 - Service - Implement latest-successful-run freshness and escalation mix helpers - Stream A (Dependent)` (`P2.5.6`)
+- [ ] `P2.5.8 - Test - Add summary and freshness service tests - Stream A (Dependent)` (`P2.5.7`)
+
+## Stream B (Score and Outcome Trends)
+- [ ] `P2.5.9 - Service - Implement daily numeric score trend aggregations - Stream B (Dependent)` (`P2.5.5`)
+- [ ] `P2.5.10 - Service - Implement daily outcome-rate trend aggregations - Stream B (Dependent)` (`P2.5.9`)
+- [ ] `P2.5.11 - Test - Add deterministic graded trend tests - Stream B (Dependent)` (`P2.5.10`)
+
+## Stream C (Intent Distribution and Trend)
+- [ ] `P2.5.12 - Service - Implement aggregate intent distribution with taxonomy metadata - Stream C (Dependent)` (`P2.5.5`)
+- [ ] `P2.5.13 - Service - Implement daily intent trend aggregation with optional intent filters - Stream C (Dependent)` (`P2.5.12`)
+- [ ] `P2.5.14 - Test - Add deterministic intent analytics tests - Stream C (Dependent)` (`P2.5.13`)
+
+## Stream D (API, Validation, and Handoff)
+- [ ] `P2.5.15 - API - Add protected graded metrics endpoints - Stream D (Dependent)` (`P2.5.8`, `P2.5.11`, `P2.5.14`)
+- [ ] `P2.5.16 - Test - Add graded metrics API tests for auth, validation, and payload contracts - Stream D (Dependent)` (`P2.5.15`)
+- [ ] `P2.5.17 - QA - Run compile and targeted pytest verification for metrics API scope - Stream D (Dependent)` (`P2.5.16`)
+- [ ] `P2.5.18 - Docs - Update task/progress docs with Phase 5 execution notes and Phase 6/7 handoff risks - Stream D (Dependent)` (`P2.5.17`)
