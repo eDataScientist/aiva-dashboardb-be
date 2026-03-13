@@ -79,7 +79,7 @@ Last Updated: `2026-03-02` (Post-completion Stream A review: `P1.2.2` approved; 
 
 ## Milestone 2: AI Grading, Monitoring, and Access Foundations
 Status: `IN PROGRESS`  
-Last Updated: `2026-03-13` (Phase 5 planning completed; detailed plan added in `docs/milestone-2/m2-phase-5.md`, no Kanban tasks created)
+Last Updated: `2026-03-13` (Phase 5 planning completed and Kanban tasks `EDA-133` through `EDA-150` were created)
 
 ## Phase 1 - Gate 1.0 (Shared Milestone 2 Data Contracts)
 - [x] `P2.1.1 - Design - Finalize customer-day grade grain and canonical identity contract - Gate (Independent)`

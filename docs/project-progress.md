@@ -10,7 +10,10 @@
   - added `docs/milestone-2/m2-phase-5.md` with Gate 5.0 plus Streams A-D for graded summary, freshness, trend, intent, API, QA, and docs work
   - synchronized `docs/tasks.md` with `P2.5.1` through `P2.5.18`
   - synchronized `docs/milestone-2/milestone-notes.md` with the additive `/api/v1/grading/metrics/*` route strategy, freshness semantics, and access baseline
-  - no Phase 5 Kanban issues were created because project `aiva-dashboard-be` currently has no `TODO` or `IN PROGRESS` tasks and task creation was not requested
+- Milestone 2 Phase 5 Kanban tasks created (`2026-03-13`):
+  - created `P2.5.1` through `P2.5.18` on project `aiva-dashboard-be`
+  - issue range: `EDA-133` through `EDA-150`
+  - issue descriptions include goals/acceptance criteria, dependencies, expected file targets, and testing/validation requirements aligned to `docs/milestone-2/m2-phase-5.md`
 - Milestone 2 Phase 4 Stream D review completed (`2026-03-12`) and tasks moved to `DONE`:
   - Approved and moved to `DONE`:
     - `P2.4.15` (`EDA-130`)
