@@ -36,6 +36,44 @@ class ConversationGrade(Base):
             name="uq_conversation_grades_phone_number_grade_date",
         ),
         Index(
+            "ix_conversation_grades_phone_number",
+            "phone_number",
+        ),
+        Index(
+            "ix_conversation_grades_grade_date",
+            "grade_date",
+        ),
+        Index(
+            "ix_conversation_grades_created_at",
+            "created_at",
+        ),
+        Index(
+            "ix_conversation_grades_intent_label",
+            "intent_label",
+        ),
+        Index(
+            "ix_conversation_grades_identity_type",
+            "identity_type",
+        ),
+        Index(
+            "ix_conversation_grades_conversation_identity",
+            "conversation_identity",
+        ),
+        Index(
+            "ix_conversation_grades_intent_code",
+            "intent_code",
+        ),
+        Index(
+            "ix_conversation_grades_grade_date_intent_code",
+            "grade_date",
+            "intent_code",
+        ),
+        Index(
+            "ix_conversation_grades_grade_date_escalation_type",
+            "grade_date",
+            "escalation_type",
+        ),
+        Index(
             "uq_conversation_grades_identity_day",
             "identity_type",
             "conversation_identity",

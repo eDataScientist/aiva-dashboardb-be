@@ -4,6 +4,13 @@ import pytest
 from pydantic import ValidationError
 
 from app.schemas.grading import GradingOutput, GradingParseError
+from app.schemas.grading_metrics import (
+    GradingIntentDistributionItem,
+    GradingMetricsErrorResponse,
+    GradingMetricsIntentTrendQuery,
+    GradingMetricsWindowQuery,
+    GradingMetricsSummaryResponse,
+)
 from app.schemas.grading_prompts import (
     PromptDomain,
     PromptPackManifest,
@@ -270,3 +277,87 @@ def test_prompt_pack_partial_outputs_require_all_domains() -> None:
     )
 
     assert partial_outputs.intent.intent_label == "Policy Inquiry"
+
+
+def test_grading_metrics_window_query_defaults_to_previous_gst_window() -> None:
+    query = GradingMetricsWindowQuery()
+    assert query.start_date is not None
+    assert query.end_date is not None
+    assert (query.end_date - query.start_date).days == 29
+
+
+def test_grading_metrics_window_query_rejects_future_end_date() -> None:
+    with pytest.raises(ValidationError):
+        GradingMetricsWindowQuery(end_date="2099-01-01")
+
+
+def test_grading_metrics_window_query_rejects_excessive_span() -> None:
+    with pytest.raises(ValidationError):
+        GradingMetricsWindowQuery(
+            start_date="2025-01-01",
+            end_date="2026-02-01",
+        )
+
+
+def test_grading_metrics_intent_trend_query_normalizes_and_deduplicates_codes() -> None:
+    query = GradingMetricsIntentTrendQuery(
+        intent_codes=[" policy_inquiry ", "policy_inquiry", "complaint"],
+    )
+    assert query.intent_codes == ["policy_inquiry", "complaint"]
+
+
+def test_grading_metrics_intent_distribution_item_rejects_mismatched_category() -> None:
+    with pytest.raises(ValidationError):
+        GradingIntentDistributionItem(
+            intent_code="policy_inquiry",
+            intent_label="Policy Inquiry",
+            intent_category="Claims Related",
+            count=1,
+            share_pct=100.0,
+        )
+
+
+def test_grading_metrics_error_response_rejects_blank_detail_items() -> None:
+    with pytest.raises(ValidationError):
+        GradingMetricsErrorResponse(
+            code="invalid_date_window",
+            message="Window is invalid.",
+            details=["   "],
+        )
+
+
+def test_grading_metrics_summary_response_accepts_canonical_payload() -> None:
+    response = GradingMetricsSummaryResponse(
+        date_window={"start_date": "2026-02-10", "end_date": "2026-03-11"},
+        total_graded_customer_days=12,
+        average_scores={
+            "relevancy": 8.1,
+            "accuracy": 7.9,
+            "completeness": 8.0,
+            "clarity": 8.2,
+            "tone": 8.4,
+            "repetition": 7.6,
+            "satisfaction": 7.8,
+            "frustration": 2.1,
+        },
+        outcome_rates={
+            "resolution_rate_pct": 80.0,
+            "loop_detected_rate_pct": 5.0,
+            "non_genuine_rate_pct": 10.0,
+            "escalation_rate_pct": 12.5,
+            "escalation_failure_rate_pct": 4.0,
+        },
+        escalation_breakdown=[
+            {"escalation_type": "Natural", "count": 1, "share_pct": 8.3},
+            {"escalation_type": "Failure", "count": 1, "share_pct": 8.3},
+            {"escalation_type": "None", "count": 10, "share_pct": 83.4},
+        ],
+        freshness={
+            "latest_successful_run_id": "df35ea32-c0b2-46e4-954e-7707b9d3a62b",
+            "latest_successful_window_end_date": "2026-03-11",
+            "latest_successful_run_finished_at": "2026-03-12T10:00:00",
+        },
+    )
+
+    assert response.average_scores.relevancy == 8.1
+    assert response.escalation_breakdown[0].escalation_type.value == "Natural"

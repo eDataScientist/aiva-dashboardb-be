@@ -21,6 +21,9 @@ GRADING_RUN_STATUSES: Final[tuple[str, ...]] = (
     "completed_with_failures",
     "failed",
 )
+GRADING_RUN_SUCCESSFUL_STATUSES: Final[frozenset[str]] = frozenset(
+    {"completed", "completed_with_failures"}
+)
 GRADING_RUN_TERMINAL_STATUSES: Final[frozenset[str]] = frozenset(
     {"completed", "completed_with_failures", "failed"}
 )
@@ -36,6 +39,7 @@ GRADING_RUN_ITEM_FAILURE_STATUSES: Final[frozenset[str]] = frozenset(
 )
 GRADING_DEFAULT_MODEL: Final[str] = "mock-grade-v1"
 GRADING_DEFAULT_PROMPT_VERSION: Final[str] = "v1"
+GRADING_METRICS_DEFAULT_WINDOW_DAYS: Final[int] = 30
 GRADING_PROMPT_PACK_BASE_DIR: Final[str] = "app/prompt_assets/grading"
 GRADING_PROMPT_SYSTEM_PROMPT_FILE: Final[str] = "system_prompt.md"
 GRADING_PROMPT_DOMAIN_ORDER: Final[tuple[str, ...]] = (
@@ -87,6 +91,32 @@ HIGHLIGHT_CODE_TO_LABEL: Final[dict[str, str]] = {
 
 HIGHLIGHT_CODES: Final[tuple[str, ...]] = tuple(HIGHLIGHT_CODE_TO_LABEL.keys())
 
+GRADING_METRICS_SCORE_TO_COLUMN: Final[dict[str, str]] = {
+    "relevancy": "relevancy_score",
+    "accuracy": "accuracy_score",
+    "completeness": "completeness_score",
+    "clarity": "clarity_score",
+    "tone": "tone_score",
+    "repetition": "repetition_score",
+    "satisfaction": "satisfaction_score",
+    "frustration": "frustration_score",
+}
+GRADING_METRICS_SCORE_KEYS: Final[tuple[str, ...]] = tuple(
+    GRADING_METRICS_SCORE_TO_COLUMN.keys()
+)
+GRADING_METRICS_OUTCOME_RATE_KEYS: Final[tuple[str, ...]] = (
+    "resolution_rate_pct",
+    "loop_detected_rate_pct",
+    "non_genuine_rate_pct",
+    "escalation_rate_pct",
+    "escalation_failure_rate_pct",
+)
+GRADING_ESCALATION_TYPE_VALUES: Final[tuple[str, ...]] = (
+    "Natural",
+    "Failure",
+    "None",
+)
+
 INTENT_CODE_TO_LABEL: Final[dict[str, str]] = {
     "policy_inquiry": "Policy Inquiry",
     "policy_purchase": "Policy Purchase",
@@ -105,8 +135,28 @@ INTENT_CODE_TO_LABEL: Final[dict[str, str]] = {
     "wasteful": "Wasteful",
     "unknown": "Unknown",
 }
-
+INTENT_CODE_TO_CATEGORY: Final[dict[str, str]] = {
+    "policy_inquiry": "Policy Related",
+    "policy_purchase": "Policy Related",
+    "policy_modification": "Policy Related",
+    "policy_cancellation": "Policy Related",
+    "claims_submission": "Claims Related",
+    "claims_follow_up": "Claims Related",
+    "claims_dispute": "Claims Related",
+    "payment_inquiry": "Billing & Payments",
+    "payment_issue": "Billing & Payments",
+    "document_request": "Documents & Admin",
+    "account_profile_update": "Documents & Admin",
+    "general_inquiry": "Support & Complaints",
+    "complaint": "Support & Complaints",
+    "escalation_request": "Support & Complaints",
+    "wasteful": "Non-genuine",
+    "unknown": "System Fallback",
+}
 INTENT_CODES: Final[tuple[str, ...]] = tuple(INTENT_CODE_TO_LABEL.keys())
+INTENT_CATEGORIES: Final[tuple[str, ...]] = tuple(
+    dict.fromkeys(INTENT_CODE_TO_CATEGORY.values())
+)
 INTENT_LABEL_TO_CODE: Final[dict[str, str]] = {
     label: code for code, label in INTENT_CODE_TO_LABEL.items()
 }

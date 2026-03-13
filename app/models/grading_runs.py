@@ -18,6 +18,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
@@ -128,6 +129,14 @@ class GradingRun(Base):
             "target_start_date",
             "target_end_date",
             "status",
+        ),
+        Index(
+            "ix_grading_runs_successful_finished_at",
+            "finished_at",
+            "created_at",
+            postgresql_where=text(
+                "status IN ('completed', 'completed_with_failures')"
+            ),
         ),
         Index("ix_grading_runs_requested_by_account_id", "requested_by_account_id"),
     )

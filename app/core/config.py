@@ -10,6 +10,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from app.core.constants import (
     GRADING_BATCH_TIMEZONE,
     GRADING_DEFAULT_MODEL,
+    GRADING_METRICS_DEFAULT_WINDOW_DAYS,
     GRADING_DEFAULT_PROMPT_VERSION,
     GRADING_PROMPT_DOMAIN_ORDER,
     GRADING_PROMPT_DOMAIN_SYSTEM_PROMPT_KEYS,
@@ -123,6 +124,14 @@ class Settings(BaseSettings):
     grading_batch_allow_mock_provider_runs: bool = Field(
         default=False,
         description="Allow batch execution to run with GRADING_PROVIDER=mock outside tests.",
+    )
+    grading_metrics_default_window_days: int = Field(
+        default=GRADING_METRICS_DEFAULT_WINDOW_DAYS,
+        description="Default inclusive graded-metrics date window in GST days.",
+    )
+    grading_metrics_max_window_days: int = Field(
+        default=366,
+        description="Maximum inclusive graded-metrics date window in GST days.",
     )
 
     @field_validator("database_url")
@@ -257,6 +266,20 @@ class Settings(BaseSettings):
             )
         return value
 
+    @field_validator(
+        "grading_metrics_default_window_days",
+        "grading_metrics_max_window_days",
+    )
+    @classmethod
+    def validate_grading_metrics_window_days(cls, value: int, info) -> int:
+        if value <= 0:
+            raise ValueError(f"{info.field_name.upper()} must be greater than 0.")
+        if value > 366:
+            raise ValueError(
+                f"{info.field_name.upper()} must be less than or equal to 366."
+            )
+        return value
+
     @field_validator("grading_api_key", "grading_base_url")
     @classmethod
     def normalize_optional_grading_fields(cls, value: str | None) -> str | None:
@@ -287,6 +310,11 @@ class Settings(BaseSettings):
             raise ValueError(
                 "GRADING_BATCH_SCHEDULER_ENABLED requires a non-mock provider unless "
                 "GRADING_BATCH_ALLOW_MOCK_PROVIDER_RUNS is true."
+            )
+        if self.grading_metrics_default_window_days > self.grading_metrics_max_window_days:
+            raise ValueError(
+                "GRADING_METRICS_DEFAULT_WINDOW_DAYS must be less than or equal to "
+                "GRADING_METRICS_MAX_WINDOW_DAYS."
             )
         return self
 

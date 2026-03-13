@@ -78,8 +78,8 @@ Last Updated: `2026-03-02` (Post-completion Stream A review: `P1.2.2` approved; 
 - [x] `P1.5.C.1 - QA - Run full pytest suite and verify all tests pass - QA (Dependent)` (`Stream A`, `Stream B`)
 
 ## Milestone 2: AI Grading, Monitoring, and Access Foundations
-Status: `IN PROGRESS`  
-Last Updated: `2026-03-13` (Phase 5 planning completed and Kanban tasks `EDA-133` through `EDA-150` were created)
+Status: `IN PROGRESS`
+Last Updated: `2026-03-13` (Phase 5 Stream D review completed; `P2.5.15` through `P2.5.18` are now `DONE`; Phase 5 is complete; Phase 6 monitoring and Phase 7 QA are next)
 
 ## Phase 1 - Gate 1.0 (Shared Milestone 2 Data Contracts)
 - [x] `P2.1.1 - Design - Finalize customer-day grade grain and canonical identity contract - Gate (Independent)`
@@ -221,29 +221,29 @@ Phase dependency note: Phase 3.5 is complete; Phase 4 batch/run-management work 
 Phase dependency note: Phase 5 should consume persisted `conversation_grades` for aggregates and `grading_runs` only for freshness metadata; existing Milestone 1 `/api/v1/analytics/*` routes remain unchanged for legacy consumers.
 
 ## Gate 5.0
-- [ ] `P2.5.1 - Design - Finalize graded metrics contract, freshness semantics, and route access - Gate (Independent)`
-- [ ] `P2.5.2 - DB - Validate grade-read index readiness and add additive indexes if needed - Gate (Dependent)` (`P2.5.1`)
-- [ ] `P2.5.3 - Config - Add metrics query defaults and canonical metric registry - Gate (Dependent)` (`P2.5.1`)
-- [ ] `P2.5.4 - API - Define AI quality metrics schemas and error payloads - Gate (Dependent)` (`P2.5.1`, `P2.5.3`)
-- [ ] `P2.5.5 - Service - Scaffold graded metrics query/module boundaries - Gate (Dependent)` (`P2.5.2`, `P2.5.4`)
+- [x] `P2.5.1 - Design - Finalize graded metrics contract, freshness semantics, and route access - Gate (Independent)` - `DONE` (review approved `2026-03-13`; Phase 5 decision record and milestone notes remain aligned with the additive graded-metrics route/access contract)
+- [x] `P2.5.2 - DB - Validate grade-read index readiness and add additive indexes if needed - Gate (Dependent)` (`P2.5.1`) - `DONE` (review approved `2026-03-13`; additive Phase 5 read indexes and ORM metadata alignment verified for `conversation_grades` / `grading_runs`)
+- [x] `P2.5.3 - Config - Add metrics query defaults and canonical metric registry - Gate (Dependent)` (`P2.5.1`) - `DONE` (review approved `2026-03-13`; bounded metrics-window settings, canonical registry constants, and env/docs wiring verified)
+- [x] `P2.5.4 - API - Define AI quality metrics schemas and error payloads - Gate (Dependent)` (`P2.5.1`, `P2.5.3`) - `DONE` (review approved `2026-03-13`; metrics query/response schemas and validation envelope verified)
+- [x] `P2.5.5 - Service - Scaffold graded metrics query/module boundaries - Gate (Dependent)` (`P2.5.2`, `P2.5.4`) - `DONE` (review approved `2026-03-13`; dedicated Phase 5 metrics service/export surface verified with direct import smoke)
 
 ## Stream A (Window Summary and Freshness)
-- [ ] `P2.5.6 - Service - Implement window summary aggregates from conversation_grades - Stream A (Dependent)` (`P2.5.5`)
-- [ ] `P2.5.7 - Service - Implement latest-successful-run freshness and escalation mix helpers - Stream A (Dependent)` (`P2.5.6`)
-- [ ] `P2.5.8 - Test - Add summary and freshness service tests - Stream A (Dependent)` (`P2.5.7`)
+- [x] `P2.5.6 - Service - Implement window summary aggregates from conversation_grades - Stream A (Dependent)` (`P2.5.5`) - `DONE` (review approved `2026-03-13`; summary aggregates remain sourced only from `conversation_grades`, empty-window zero stability is verified, and unrestricted `pytest tests/test_grading_metrics.py -q -k "summary"` passed `5 passed`)
+- [x] `P2.5.7 - Service - Implement latest-successful-run freshness and escalation mix helpers - Stream A (Dependent)` (`P2.5.6`) - `DONE` (review approved `2026-03-13`; freshness prefers the latest successful run, ignores later failed runs, and escalation breakdown remains independent from run-ledger counters)
+- [x] `P2.5.8 - Test - Add summary and freshness service tests - Stream A (Dependent)` (`P2.5.7`) - `DONE` (review approved `2026-03-13`; `python -m compileall app/services/grading_metrics.py tests/test_grading_metrics.py` passed, unrestricted `pytest tests/test_grading_metrics.py -q` passed `19 passed`, and sandboxed pytest still hits the expected Docker/Testcontainers Windows npipe blocker)
 
 ## Stream B (Score and Outcome Trends)
-- [ ] `P2.5.9 - Service - Implement daily numeric score trend aggregations - Stream B (Dependent)` (`P2.5.5`)
-- [ ] `P2.5.10 - Service - Implement daily outcome-rate trend aggregations - Stream B (Dependent)` (`P2.5.9`)
-- [ ] `P2.5.11 - Test - Add deterministic graded trend tests - Stream B (Dependent)` (`P2.5.10`)
+- [x] `P2.5.9 - Service - Implement daily numeric score trend aggregations - Stream B (Dependent)` (`P2.5.5`) - `DONE` (review approved `2026-03-13`; `app/services/grading_metrics.py` and `app/services/__init__.py` keep score-trend aggregation on `conversation_grades.grade_date` with stable zero-filled daily points)
+- [x] `P2.5.10 - Service - Implement daily outcome-rate trend aggregations - Stream B (Dependent)` (`P2.5.9`) - `DONE` (review approved `2026-03-13`; `app/services/grading_metrics.py` returns daily outcome percentages using grade-row denominators and stable zero-filled windows)
+- [x] `P2.5.11 - Test - Add deterministic graded trend tests - Stream B (Dependent)` (`P2.5.10`) - `DONE` (review approved `2026-03-13`; `tests/test_grading_metrics.py` locks sparse windows, empty windows, zero-filled buckets, and fractional percentage rounding; unrestricted `pytest tests/test_grading_metrics.py -q` passed `19 passed`)
 
 ## Stream C (Intent Distribution and Trend)
-- [ ] `P2.5.12 - Service - Implement aggregate intent distribution with taxonomy metadata - Stream C (Dependent)` (`P2.5.5`)
-- [ ] `P2.5.13 - Service - Implement daily intent trend aggregation with optional intent filters - Stream C (Dependent)` (`P2.5.12`)
-- [ ] `P2.5.14 - Test - Add deterministic intent analytics tests - Stream C (Dependent)` (`P2.5.13`)
+- [x] `P2.5.12 - Service - Implement aggregate intent distribution with taxonomy metadata - Stream C (Dependent)` (`P2.5.5`) - `DONE` (review approved `2026-03-13`; `app/services/grading_metrics.py` returns all canonical intent buckets with category metadata and stable zero-count rows)
+- [x] `P2.5.13 - Service - Implement daily intent trend aggregation with optional intent filters - Stream C (Dependent)` (`P2.5.12`) - `DONE` (review approved `2026-03-13`; `app/services/grading_metrics.py` returns zero-filled all-intent and filtered intent series using only canonical taxonomy metadata)
+- [x] `P2.5.14 - Test - Add deterministic intent analytics tests - Stream C (Dependent)` (`P2.5.13`) - `DONE` (review approved `2026-03-13`; `tests/test_grading_metrics.py` covers distribution/trend metadata, empty windows, filtered series, and missing-match zero fill; unrestricted `pytest tests/test_grading_metrics.py -q` passed `19 passed`)
 
 ## Stream D (API, Validation, and Handoff)
-- [ ] `P2.5.15 - API - Add protected graded metrics endpoints - Stream D (Dependent)` (`P2.5.8`, `P2.5.11`, `P2.5.14`)
-- [ ] `P2.5.16 - Test - Add graded metrics API tests for auth, validation, and payload contracts - Stream D (Dependent)` (`P2.5.15`)
-- [ ] `P2.5.17 - QA - Run compile and targeted pytest verification for metrics API scope - Stream D (Dependent)` (`P2.5.16`)
-- [ ] `P2.5.18 - Docs - Update task/progress docs with Phase 5 execution notes and Phase 6/7 handoff risks - Stream D (Dependent)` (`P2.5.17`)
+- [x] `P2.5.15 - API - Add protected graded metrics endpoints - Stream D (Dependent)` (`P2.5.8`, `P2.5.11`, `P2.5.14`) - `DONE` (`app/api/routes/grading_metrics.py`, `app/api/routes/__init__.py`, `app/api/router.py`, `app/services/__init__.py`; review approved `2026-03-13`)
+- [x] `P2.5.16 - Test - Add graded metrics API tests for auth, validation, and payload contracts - Stream D (Dependent)` (`P2.5.15`) - `DONE` (`tests/test_grading_metrics_api.py`; `19 passed`; review approved `2026-03-13`)
+- [x] `P2.5.17 - QA - Run compile and targeted pytest verification for metrics API scope - Stream D (Dependent)` (`P2.5.16`) - `DONE` (compile passed; unrestricted `pytest tests/test_grading_metrics_api.py -q` passed `19 passed`; review approved `2026-03-13`)
+- [x] `P2.5.18 - Docs - Update task/progress docs with Phase 5 execution notes and Phase 6/7 handoff risks - Stream D (Dependent)` (`P2.5.17`) - `DONE` (`docs/tasks.md`, `docs/project-progress.md` synchronized with Stream D execution outcomes and Phase 6/7 handoff state; review approved `2026-03-13`)

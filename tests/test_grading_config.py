@@ -3,6 +3,14 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
+from app.core.constants import (
+    GRADING_METRICS_OUTCOME_RATE_KEYS,
+    GRADING_METRICS_SCORE_KEYS,
+    GRADING_RUN_SUCCESSFUL_STATUSES,
+    INTENT_CATEGORIES,
+    INTENT_CODE_TO_CATEGORY,
+    INTENT_CODES,
+)
 from app.core.config import Settings
 
 
@@ -30,6 +38,8 @@ def test_settings_default_to_mock_grading_provider() -> None:
     assert settings.grading_batch_max_backfill_days == 31
     assert settings.grading_batch_stale_run_timeout_minutes == 180
     assert settings.grading_batch_allow_mock_provider_runs is False
+    assert settings.grading_metrics_default_window_days == 30
+    assert settings.grading_metrics_max_window_days == 366
     assert settings.grading_batch_timezone == "Asia/Dubai"
 
 
@@ -61,6 +71,16 @@ def test_settings_reject_invalid_batch_backfill_window() -> None:
 def test_settings_reject_invalid_stale_run_timeout() -> None:
     with pytest.raises(ValidationError):
         Settings(**_base_settings(grading_batch_stale_run_timeout_minutes=0))
+
+
+def test_settings_reject_metrics_default_window_larger_than_maximum() -> None:
+    with pytest.raises(ValidationError):
+        Settings(
+            **_base_settings(
+                grading_metrics_default_window_days=31,
+                grading_metrics_max_window_days=30,
+            )
+        )
 
 
 def test_settings_normalize_optional_grading_fields() -> None:
@@ -100,3 +120,38 @@ def test_settings_reject_missing_prompt_pack_directory() -> None:
                 grading_prompt_version="missing-version",
             )
         )
+
+
+def test_phase5_metric_registry_constants_remain_aligned() -> None:
+    assert GRADING_METRICS_SCORE_KEYS == (
+        "relevancy",
+        "accuracy",
+        "completeness",
+        "clarity",
+        "tone",
+        "repetition",
+        "satisfaction",
+        "frustration",
+    )
+    assert GRADING_METRICS_OUTCOME_RATE_KEYS == (
+        "resolution_rate_pct",
+        "loop_detected_rate_pct",
+        "non_genuine_rate_pct",
+        "escalation_rate_pct",
+        "escalation_failure_rate_pct",
+    )
+    assert GRADING_RUN_SUCCESSFUL_STATUSES == {
+        "completed",
+        "completed_with_failures",
+    }
+    assert len(INTENT_CODES) == 16
+    assert INTENT_CODE_TO_CATEGORY["unknown"] == "System Fallback"
+    assert INTENT_CATEGORIES == (
+        "Policy Related",
+        "Claims Related",
+        "Billing & Payments",
+        "Documents & Admin",
+        "Support & Complaints",
+        "Non-genuine",
+        "System Fallback",
+    )

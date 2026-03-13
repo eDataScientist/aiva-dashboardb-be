@@ -3,9 +3,81 @@
 ## Project
 - Name: `aiva-dashboard-be`
 - Current Milestone: `Milestone 2 - AI Grading, Monitoring, and Access Foundations`
-- Current Phase: `Milestone 2 Phase 5 - AI Quality Metrics API (planned)`
+- Current Phase: `Milestone 2 Phase 5 - AI Quality Metrics API`
 
 ## Current Status
+- Milestone 2 Phase 5 Stream D review completed (`2026-03-13`) and tasks moved to `DONE`:
+  - Approved and moved to `DONE`:
+    - `P2.5.15`
+    - `P2.5.16`
+    - `P2.5.17`
+    - `P2.5.18`
+  - Review outcomes:
+    - five protected graded metrics endpoints added under `/api/v1/grading/metrics/*` (`summary`, `score-trends`, `outcome-trends`, `intents/distribution`, `intents/trend`) in `app/api/routes/grading_metrics.py`
+    - date-window and intent-code validation errors are caught at the dependency level and returned as `GradingMetricsErrorResponse` with `INVALID_DATE_WINDOW` / `INVALID_INTENT_FILTER` codes
+    - access is any authenticated active role, matching the Phase 5 access matrix
+    - `app/api/routes/__init__.py` and `app/api/router.py` updated to register the new router
+    - `app/services/__init__.py` updated to export `get_grading_metrics_summary`
+    - 19 new API tests in `tests/test_grading_metrics_api.py` covering auth, role access, empty state, populated state, invalid window, future end date, and invalid intent code
+  - Review validation status:
+    - `python -m compileall app/api/routes/grading_metrics.py app/api/routes/__init__.py app/api/router.py app/services/__init__.py tests/test_grading_metrics_api.py` passed
+    - unrestricted `pytest tests/test_grading_metrics_api.py -q` passed (`19 passed`)
+  - Phase 5 is now complete. Phase 6 (monitoring highlights) and Phase 7 (full QA) are next.
+- Milestone 2 Phase 5 Stream B review completed (`2026-03-13`) and tasks moved to `DONE`:
+  - Approved and moved to `DONE`:
+    - `P2.5.9` (`EDA-141`)
+    - `P2.5.10` (`EDA-142`)
+    - `P2.5.11` (`EDA-143`)
+  - Review outcomes:
+    - score trends remain isolated in `app/services/grading_metrics.py`, bucket strictly by `conversation_grades.grade_date`, and return stable zero-filled daily averages across sparse and empty windows
+    - outcome trends use daily grade-row denominators for resolution, loop-detected, non-genuine, escalation, and escalation-failure percentages, with deterministic rounding for fractional mixed windows
+    - the shared Phase 5 metrics test module now covers sparse score windows, empty windows, mixed-outcome windows, and fractional percentage rounding for the full Stream B surface
+  - Review validation status:
+    - `python -m compileall app/services/grading_metrics.py tests/test_grading_metrics.py` passed
+    - sandboxed `pytest tests/test_grading_metrics.py -q` hit the expected Docker/Testcontainers Windows npipe permission blocker (`CreateFile Access is denied`)
+    - unrestricted `pytest tests/test_grading_metrics.py -q` passed (`19 passed`)
+- Milestone 2 Phase 5 Stream A review completed (`2026-03-13`) and tasks moved to `DONE`:
+  - Approved and moved to `DONE`:
+    - `P2.5.6` (`EDA-138`)
+    - `P2.5.7` (`EDA-139`)
+    - `P2.5.8` (`EDA-140`)
+  - Review outcomes:
+    - selected-window summary aggregates remain sourced from `conversation_grades` only and return stable zero-valued payloads for empty windows
+    - latest-successful freshness correctly prefers `completed` / `completed_with_failures`, ignores later failed runs, and keeps escalation mix separate from run-ledger counters
+    - the shared Phase 5 grading-metrics test module now passes end to end, so Stream A approval is backed by both targeted summary coverage and a full-file rerun
+  - Review validation status:
+    - `python -m compileall app/services/grading_metrics.py tests/test_grading_metrics.py` passed
+    - sandboxed `pytest tests/test_grading_metrics.py -q -k "summary"` hit the expected Docker/Testcontainers Windows npipe permission blocker (`CreateFile Access is denied`)
+    - unrestricted `pytest tests/test_grading_metrics.py -q -k "summary"` passed (`5 passed`)
+    - unrestricted `pytest tests/test_grading_metrics.py -q` passed (`19 passed`)
+- Milestone 2 Phase 5 Stream C review completed (`2026-03-13`) and tasks moved to `DONE`:
+  - Approved and moved to `DONE`:
+    - `P2.5.12` (`EDA-144`)
+    - `P2.5.13` (`EDA-145`)
+    - `P2.5.14` (`EDA-146`)
+  - Review outcomes:
+    - intent distribution remains isolated in `app/services/grading_metrics.py`, returns the full canonical taxonomy, and does not leak legacy raw chatbot intent values
+    - intent trend supports both all-intent and selected-intent modes with stable zero-filled daily series and canonical metadata on every returned series
+    - the shared Phase 5 metrics test module now locks in populated, empty-window, null-intent, filtered-intent, and missing-match zero-fill behavior for the Stream C surface
+  - Review validation status:
+    - `python -m compileall app/services/grading_metrics.py tests/test_grading_metrics.py` passed
+    - sandboxed `pytest tests/test_grading_metrics.py -q` hit the expected Docker/Testcontainers Windows npipe permission blocker (`CreateFile Access is denied`)
+    - unrestricted `pytest tests/test_grading_metrics.py -q` passed (`19 passed`)
+- Milestone 2 Phase 5 Gate 5.0 review completed (`2026-03-13`) and tasks moved to `DONE`:
+  - Approved and moved to `DONE`:
+    - `P2.5.1` (`EDA-133`)
+    - `P2.5.2` (`EDA-134`)
+    - `P2.5.3` (`EDA-135`)
+    - `P2.5.4` (`EDA-136`)
+    - `P2.5.5` (`EDA-137`)
+  - Review outcomes:
+    - the additive `/api/v1/grading/metrics/*` route strategy, freshness split (`conversation_grades` for aggregates, `grading_runs` for freshness), and authenticated-any-role access baseline are explicit and consistent across the Phase 5 plan and milestone notes
+    - the Phase 5 read-path migration remains additive-only, and the ORM metadata now reflects both the prior standalone read indexes and the new composite/partial indexes needed for metrics and freshness reads
+    - the metrics window config, canonical metric and intent registries, typed schema layer, and dedicated `app/services/grading_metrics.py` scaffold are aligned and ready for Streams A-C without mutating legacy Milestone 1 analytics services
+  - Review validation status:
+    - `python -m compileall app/core app/models app/schemas app/services tests/test_grading_config.py tests/test_grading_schemas.py` passed
+    - `pytest tests/test_grading_config.py tests/test_grading_schemas.py -q` passed (`33 passed`)
+    - direct import smoke passed for the new `app.services` Phase 5 metrics exports
 - Milestone 2 Phase 5 detailed plan created (`2026-03-13`):
   - added `docs/milestone-2/m2-phase-5.md` with Gate 5.0 plus Streams A-D for graded summary, freshness, trend, intent, API, QA, and docs work
   - synchronized `docs/tasks.md` with `P2.5.1` through `P2.5.18`
@@ -583,7 +655,7 @@
       - pre/post source table counts unchanged (`Arabia Insurance Chats=9090`, `usage_notifications=0`)
 
 ## Next Recommended Action
-- Create or approve Milestone 2 Phase 5 Kanban tasks, then execute Gate 5.0 against the new `docs/milestone-2/m2-phase-5.md` plan.
+- Begin Milestone 2 Phase 6 (Monitoring Highlights). Phase 5 (`P2.5.1` through `P2.5.18`) is now complete. Phase 6 should reuse the canonical metric keys, intent taxonomy metadata, and freshness semantics established in Phase 5 rather than rebuilding them.
 
 ## Notes
 - Kanban MCP is reachable and synchronized with current execution state.

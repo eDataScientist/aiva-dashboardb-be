@@ -291,10 +291,18 @@
 | D.4 | `P2.5.18 - Docs - Update task/progress docs with Phase 5 execution notes and Phase 6/7 handoff risks - Stream D (Dependent)` | Sync docs after execution/review and capture Phase 6 monitoring + Phase 7 QA handoff risks. | `P2.5.17` | `docs/tasks.md`, `docs/project-progress.md`, `docs/milestone-2/m2-phase-5.md` | Documentation review for status consistency and handoff readiness. |
 
 ### Stream D Acceptance Criteria
-- [ ] New graded metrics routes are protected and registered cleanly.
-- [ ] Route tests cover auth, validation, empty-state, and populated-state contracts.
-- [ ] Compile and targeted pytest verification are executed or blockers are explicitly documented.
-- [ ] Docs remain synchronized with execution and review outcomes.
+- [x] New graded metrics routes are protected and registered cleanly.
+- [x] Route tests cover auth, validation, empty-state, and populated-state contracts.
+- [x] Compile and targeted pytest verification are executed or blockers are explicitly documented.
+- [x] Docs remain synchronized with execution and review outcomes.
+
+### Stream D Execution Notes (`2026-03-13`)
+- `app/api/routes/grading_metrics.py` created with five endpoints under `/api/v1/grading/metrics/*`.
+- Date-window and intent-code validation errors are caught inside async sub-dependencies (`_parse_window_query`, `_parse_intent_trend_query`) and returned as `GradingMetricsErrorResponse` with stable error codes.
+- `app/api/routes/__init__.py` and `app/api/router.py` updated to register `grading_metrics_router`.
+- `app/services/__init__.py` updated to export `get_grading_metrics_summary`.
+- `tests/test_grading_metrics_api.py` created with 19 tests covering auth, role access, validation rejection, empty-state zeros, and populated payload shapes.
+- `python -m compileall` passed; unrestricted `pytest tests/test_grading_metrics_api.py -q` passed `19 passed`.
 
 ## Suggested Files by Concern
 - Config and constants:
@@ -343,13 +351,13 @@ Gate 5.0 (P2.5.1 - P2.5.5 graded metrics contract + readiness) ----+
 ```
 
 ## Definition of Done (Phase 5)
-- [ ] New graded metrics endpoints exist under `/api/v1/grading/metrics/*`.
-- [ ] Existing Milestone 1 raw-chat analytics endpoints remain stable and unchanged in meaning.
-- [ ] Summary, score trends, outcome trends, and intent analytics are driven by `conversation_grades`.
-- [ ] Freshness metadata is surfaced from `grading_runs` without becoming the source of aggregate truth.
-- [ ] Date-window defaults, bounds, and zero-fill behavior are deterministic and documented.
-- [ ] Targeted tests exist for service and route contracts in Phase 5 scope.
-- [ ] No lint/syntax errors exist in modified Python modules.
+- [x] New graded metrics endpoints exist under `/api/v1/grading/metrics/*`.
+- [x] Existing Milestone 1 raw-chat analytics endpoints remain stable and unchanged in meaning.
+- [x] Summary, score trends, outcome trends, and intent analytics are driven by `conversation_grades`.
+- [x] Freshness metadata is surfaced from `grading_runs` without becoming the source of aggregate truth.
+- [x] Date-window defaults, bounds, and zero-fill behavior are deterministic and documented.
+- [x] Targeted tests exist for service and route contracts in Phase 5 scope.
+- [x] No lint/syntax errors exist in modified Python modules.
 
 ## Test Scenarios (Phase 5 Validation)
 
