@@ -79,7 +79,7 @@ Last Updated: `2026-03-02` (Post-completion Stream A review: `P1.2.2` approved; 
 
 ## Milestone 2: AI Grading, Monitoring, and Access Foundations
 Status: `IN PROGRESS`
-Last Updated: `2026-03-16` (Gate 6.0 rereview completed and `P2.6.1` through `P2.6.5` are now `DONE`; the remaining Phase 6 streams are still pending)
+Last Updated: `2026-03-17` (Phase 6 Stream D rereview approved; `P2.6.15` through `P2.6.18` are now `DONE` and Phase 6 implementation/review is complete pending Phase 7 QA planning)
 
 ## Phase 1 - Gate 1.0 (Shared Milestone 2 Data Contracts)
 - [x] `P2.1.1 - Design - Finalize customer-day grade grain and canonical identity contract - Gate (Independent)`
@@ -259,22 +259,22 @@ Phase dependency note: Phase 6 should reuse the canonical intent metadata, highl
 - [x] `P2.6.5 - Service - Scaffold monitoring query and highlight module boundaries - Gate (Dependent)` (`P2.6.2`, `P2.6.4`) - `DONE` (`app/services/grading_monitoring.py`, `app/services/monitoring_highlights.py`, `app/services/__init__.py`, `tests/test_grading_monitoring_scaffold.py`; review approved `2026-03-16`)
 
 ## Stream A (Highlight Evaluation and Config Fallback)
-- [ ] `P2.6.6 - Service - Implement active highlight-config loader with seeded-default fallback - Stream A (Dependent)` (`P2.6.5`)
-- [ ] `P2.6.7 - Service - Implement read-time highlight evaluation and badge mapping for grade rows - Stream A (Dependent)` (`P2.6.6`)
-- [ ] `P2.6.8 - Test - Add deterministic highlight config and trigger tests - Stream A (Dependent)` (`P2.6.7`)
+- [x] `P2.6.6 - Service - Implement active highlight-config loader with seeded-default fallback - Stream A (Dependent)` (`P2.6.5`) - `DONE` (`app/services/monitoring_highlights.py`, `app/services/__init__.py`, `tests/test_monitoring_highlights.py`; rereview approved `2026-03-16` after SQLAlchemy read failures were folded into the documented seeded-default fallback path)
+- [x] `P2.6.7 - Service - Implement read-time highlight evaluation and badge mapping for grade rows - Stream A (Dependent)` (`P2.6.6`) - `DONE` (`app/services/monitoring_highlights.py`, `app/services/__init__.py`, `tests/test_monitoring_highlights.py`; rereview approved `2026-03-16`; canonical `MonitoringHighlightBadge` ordering/label mapping remains stable with the corrected loader dependency)
+- [x] `P2.6.8 - Test - Add deterministic highlight config and trigger tests - Stream A (Dependent)` (`P2.6.7`) - `DONE` (`tests/test_monitoring_highlights.py`; rereview approved `2026-03-16` after SQLAlchemy read-failure fallback regression coverage was added; `pytest tests/test_monitoring_highlights.py -q` passed `12 passed`)
 
 ## Stream B (Customer-Day Monitoring List)
-- [ ] `P2.6.9 - Service - Implement customer-day monitoring list query with filters, pagination, and deterministic ordering - Stream B (Dependent)` (`P2.6.5`)
-- [ ] `P2.6.10 - Service - Enrich monitoring list items with highlight badges, intent metadata, previews, and freshness - Stream B (Dependent)` (`P2.6.7`, `P2.6.9`)
-- [ ] `P2.6.11 - Test - Add deterministic monitoring list service tests - Stream B (Dependent)` (`P2.6.10`)
+- [x] `P2.6.9 - Service - Implement customer-day monitoring list query with filters, pagination, and deterministic ordering - Stream B (Dependent)` (`P2.6.5`) - `DONE` (`EDA-159`; rereview approved `2026-03-17`; `app/services/grading_monitoring.py`, `app/services/__init__.py`, `tests/test_grading_monitoring.py`; canonical-row SQL filter added; compile + `pytest tests/test_grading_monitoring.py -q` passed `6 passed`)
+- [x] `P2.6.10 - Service - Enrich monitoring list items with highlight badges, intent metadata, previews, and freshness - Stream B (Dependent)` (`P2.6.7`, `P2.6.9`) - `DONE` (`EDA-160`; rereview approved `2026-03-17`; `app/services/grading_monitoring.py`, `app/services/__init__.py`, `tests/test_grading_monitoring.py`; enrichment now rides on the canonical-row-only base query; compile + `pytest tests/test_grading_monitoring.py -q` passed `6 passed`)
+- [x] `P2.6.11 - Test - Add deterministic monitoring list service tests - Stream B (Dependent)` (`P2.6.10`) - `DONE` (`EDA-161`; rereview approved `2026-03-17`; `tests/test_grading_monitoring.py`; legacy phone-only exclusion regression added; `pytest tests/test_grading_monitoring.py -q -k "list"` passed `6 passed`)
 
 ## Stream C (Customer-Day Detail, Timeline, and Full-Conversation Linkage)
-- [ ] `P2.6.12 - Service - Implement customer-day detail query with same-day transcript and full grade panel - Stream C (Dependent)` (`P2.6.5`, `P2.6.7`)
-- [ ] `P2.6.13 - Service - Add grade-history timeline and full-conversation linkage to monitoring detail - Stream C (Dependent)` (`P2.6.12`)
-- [ ] `P2.6.14 - Test - Add deterministic monitoring detail service tests - Stream C (Dependent)` (`P2.6.13`)
+- [x] `P2.6.12 - Service - Implement customer-day detail query with same-day transcript and full grade panel - Stream C (Dependent)` (`P2.6.5`, `P2.6.7`) - `DONE` (`EDA-162`; review approved `2026-03-17`; `app/services/grading_monitoring.py`, `app/services/__init__.py`, `tests/test_grading_monitoring_detail.py`; compile + `pytest tests/test_grading_monitoring_detail.py -q` passed `4 passed`)
+- [x] `P2.6.13 - Service - Add grade-history timeline and full-conversation linkage to monitoring detail - Stream C (Dependent)` (`P2.6.12`) - `DONE` (`EDA-163`; review approved `2026-03-17`; `app/services/grading_monitoring.py`, `tests/test_grading_monitoring_detail.py`; compile + `pytest tests/test_grading_monitoring_detail.py -q` passed `4 passed`)
+- [x] `P2.6.14 - Test - Add deterministic monitoring detail service tests - Stream C (Dependent)` (`P2.6.13`) - `DONE` (`EDA-164`; review approved `2026-03-17`; `tests/test_grading_monitoring_detail.py`; `pytest tests/test_grading_monitoring_detail.py -q` passed `4 passed`)
 
 ## Stream D (API, Validation, and Phase 7 Handoff)
-- [ ] `P2.6.15 - API - Add protected monitoring list and detail endpoints - Stream D (Dependent)` (`P2.6.8`, `P2.6.11`, `P2.6.14`)
-- [ ] `P2.6.16 - Test - Add monitoring API tests for auth, filters, sort, detail, and error contracts - Stream D (Dependent)` (`P2.6.15`)
-- [ ] `P2.6.17 - QA - Run compile and targeted pytest verification for monitoring scope - Stream D (Dependent)` (`P2.6.16`)
-- [ ] `P2.6.18 - Docs - Update task/progress docs with Phase 6 execution notes and Phase 7 handoff risks - Stream D (Dependent)` (`P2.6.17`)
+- [x] `P2.6.15 - API - Add protected monitoring list and detail endpoints - Stream D (Dependent)` (`P2.6.8`, `P2.6.11`, `P2.6.14`) - `DONE` (`EDA-165`; rereview approved `2026-03-17`; `app/api/routes/grading_monitoring.py`, `app/api/routes/__init__.py`, `app/api/router.py`, `app/main.py`; additive monitoring routes remain registered and app-level monitoring validation now normalizes malformed date/numeric/UUID parsing into the monitoring error envelope)
+- [x] `P2.6.16 - Test - Add monitoring API tests for auth, filters, sort, detail, and error contracts - Stream D (Dependent)` (`P2.6.15`) - `DONE` (`EDA-166`; rereview approved `2026-03-17`; `tests/test_grading_monitoring_api.py`; auth, invalid window/filter/sort, malformed date/numeric/UUID parsing, empty-state freshness, populated list/detail, and grade-not-found API coverage added; `pytest tests/test_grading_monitoring_api.py -q` passed `12 passed`)
+- [x] `P2.6.17 - QA - Run compile and targeted pytest verification for monitoring scope - Stream D (Dependent)` (`P2.6.16`) - `DONE` (`EDA-167`; rereview approved `2026-03-17`; verification-only; `python -m compileall app/main.py app/api/routes/grading_monitoring.py tests/test_grading_monitoring_api.py` passed and `pytest tests/test_monitoring_highlights.py tests/test_grading_monitoring.py tests/test_grading_monitoring_detail.py tests/test_grading_monitoring_api.py -q` passed `34 passed`; only third-party Paramiko deprecation warnings remained)
+- [x] `P2.6.18 - Docs - Update task/progress docs with Phase 6 execution notes and Phase 7 handoff risks - Stream D (Dependent)` (`P2.6.17`) - `DONE` (`EDA-168`; rereview approved `2026-03-17`; `docs/tasks.md`, `docs/project-progress.md`, and `docs/milestone-2/m2-phase-6.md` synchronized with the Stream D review-fix pass, approval outcome, and the Phase 7 QA handoff note)

@@ -6,6 +6,99 @@
 - Current Phase: `Milestone 2 Phase 6 - Conversations Monitoring API Overhaul`
 
 ## Current Status
+- Milestone 2 Phase 6 Stream D rereview completed (`2026-03-17`) and tasks moved to `DONE`:
+  - Approved and moved to `DONE`:
+    - `P2.6.15` (`EDA-165`)
+    - `P2.6.16` (`EDA-166`)
+    - `P2.6.17` (`EDA-167`)
+    - `P2.6.18` (`EDA-168`)
+  - Rereview outcomes:
+    - monitoring route validation now fully normalizes malformed date, numeric, and UUID parsing into the documented monitoring error envelope instead of leaking raw FastAPI `detail=[...]` payloads.
+    - monitoring API coverage now locks the malformed-input contract alongside the existing auth, filter, sort, empty-state, populated-state, and not-found cases.
+    - Stream D docs now accurately describe the validation-envelope guarantee only after the malformed-input fix landed.
+  - Rereview validation status:
+    - `python -m compileall app/main.py app/api/routes/grading_monitoring.py tests/test_grading_monitoring_api.py` passed
+    - `pytest tests/test_grading_monitoring_api.py -q` passed (`12 passed`)
+    - `pytest tests/test_monitoring_highlights.py tests/test_grading_monitoring.py tests/test_grading_monitoring_detail.py tests/test_grading_monitoring_api.py -q` passed (`34 passed`)
+- Milestone 2 Phase 6 is now complete and ready for Phase 7 QA/hardening planning.
+- Milestone 2 Phase 6 Stream D review-fix pass completed (`2026-03-17`) and tasks remain in `IN REVIEW`:
+  - `P2.6.15` (`EDA-165`): `app/main.py` now normalizes monitoring `RequestValidationError` / Pydantic validation failures for `/api/v1/monitoring/conversations*`, so malformed date, numeric, and UUID inputs no longer leak the generic FastAPI `detail=[...]` payload.
+  - `P2.6.16` (`EDA-166`): `tests/test_grading_monitoring_api.py` now covers malformed `start_date`, malformed `frustration_min`, and malformed `grade_id` parsing alongside the existing list/detail/auth/filter contract cases.
+  - `P2.6.17` (`EDA-167`): verification evidence was refreshed after the review fix so the monitoring bundle now includes the malformed-input contract coverage.
+  - `P2.6.18` (`EDA-168`): Stream D docs were corrected so they only claim stable monitoring validation envelopes after the malformed-input paths were normalized.
+  - Stream D revalidation status:
+    - `python -m compileall app/main.py app/api/routes/grading_monitoring.py tests/test_grading_monitoring_api.py` passed
+    - `pytest tests/test_grading_monitoring_api.py -q` passed (`12 passed`)
+    - `pytest tests/test_monitoring_highlights.py tests/test_grading_monitoring.py tests/test_grading_monitoring_detail.py tests/test_grading_monitoring_api.py -q` passed (`34 passed`)
+- Milestone 2 Phase 6 Stream D execution completed (`2026-03-17`) and tasks moved to `IN REVIEW`:
+  - `P2.6.15` (`EDA-165`): added protected `/api/v1/monitoring/conversations` list/detail routes in `app/api/routes/grading_monitoring.py`, registered them through `app/api/routes/__init__.py` and `app/api/router.py`, and mapped the modeled monitoring validation/not-found paths to stable error envelopes without altering legacy `/api/v1/conversations/*` semantics.
+  - `P2.6.16` (`EDA-166`): added `tests/test_grading_monitoring_api.py` coverage for list auth, allowed-role empty states with freshness metadata, filtered/sorted populated list payloads, detail payload shape, invalid monitoring windows/filters/sorts, and stable grade-not-found responses before the malformed-input review fix expanded that surface.
+  - `P2.6.17` (`EDA-167`): verification-only task captured a clean compile plus targeted monitoring pytest evidence for highlights, list/detail services, and the new API routes.
+  - `P2.6.18` (`EDA-168`): synchronized `docs/tasks.md`, `docs/project-progress.md`, and `docs/milestone-2/m2-phase-6.md` with Stream D execution state and the Phase 7 handoff note.
+  - Stream D validation status:
+    - `python -m compileall app tests` passed
+    - OpenAPI smoke exposed `/api/v1/monitoring/conversations` and `/api/v1/monitoring/conversations/{grade_id}`
+    - `pytest tests/test_grading_monitoring_api.py -q` passed (`9 passed`) before the malformed-input review fix expanded the suite
+    - `pytest tests/test_monitoring_highlights.py tests/test_grading_monitoring.py tests/test_grading_monitoring_detail.py tests/test_grading_monitoring_api.py -q` passed (`31 passed`) before the malformed-input review fix expanded the suite
+- Milestone 2 Phase 6 Stream B rereview completed (`2026-03-17`) and tasks moved to `DONE`:
+  - Approved and moved to `DONE`:
+    - `P2.6.9` (`EDA-159`)
+    - `P2.6.10` (`EDA-160`)
+    - `P2.6.11` (`EDA-161`)
+  - Rereview outcomes:
+    - `build_monitoring_list_stmt()` now excludes non-canonical legacy grade rows by requiring non-blank `identity_type` and `conversation_identity` before the row can appear in the monitoring list, keeping the Stream B list aligned with the detail surface.
+    - list enrichment now runs only on canonical customer-day rows, so the response can no longer emit `conversation_key` links for legacy phone-only grade rows that the detail service would reject.
+    - `tests/test_grading_monitoring.py` now includes a regression that seeds a phone-only legacy grade row and proves it is excluded from monitoring list results.
+  - Rereview validation status:
+    - `python -m compileall app/services/grading_monitoring.py app/services/__init__.py tests/test_grading_monitoring.py` passed
+    - unrestricted `pytest tests/test_grading_monitoring.py -q` passed (`6 passed`)
+- Milestone 2 Phase 6 Stream B review-fix pass completed (`2026-03-17`) and tasks moved back to `IN REVIEW`:
+  - `P2.6.9` (`EDA-159`): `build_monitoring_list_stmt()` now excludes non-canonical legacy grade rows by requiring non-blank `identity_type` and `conversation_identity` before a row can appear in the monitoring list, keeping the Stream B list aligned with the detail surface.
+  - `P2.6.10` (`EDA-160`): list enrichment now runs only on canonical customer-day rows, so the response can no longer emit `conversation_key` links for legacy phone-only grade rows that the detail service would reject.
+  - `P2.6.11` (`EDA-161`): `tests/test_grading_monitoring.py` now includes a regression that seeds a phone-only legacy grade row and proves it is excluded from monitoring list results.
+  - Review-fix validation status:
+    - `python -m compileall app/services/grading_monitoring.py app/services/__init__.py tests/test_grading_monitoring.py` passed
+    - `pytest tests/test_grading_monitoring.py -q -k "legacy_phone_only_grade_rows"` passed (`1 passed`)
+    - `pytest tests/test_grading_monitoring.py -q` passed (`6 passed`)
+- Milestone 2 Phase 6 Stream C review completed (`2026-03-17`) and tasks moved to `DONE`:
+  - Approved and moved to `DONE`:
+    - `P2.6.12` (`EDA-162`)
+    - `P2.6.13` (`EDA-163`)
+    - `P2.6.14` (`EDA-164`)
+  - Review outcomes:
+    - `get_monitoring_conversation_detail()` cleanly anchors detail loading to one grade row, reuses the canonical same-day transcript helper, preserves grouped grade-panel sections, and fails closed for unknown grade ids or corrupt/missing same-day transcript data.
+    - recent-history detail loading remains deterministic: the current row is excluded, ordering is newest-first, the explicit/default history limit is enforced, and the preserved full-conversation `conversation_key` linkage is stable across the detail payload and history rows.
+    - `tests/test_grading_monitoring_detail.py` covers populated detail payloads, chronological transcript mapping, empty-history behavior, recent-history ordering/limit/linkage semantics, and not-found/corrupt-transcript failure paths without colliding with the Stream B list test module.
+  - Review validation status:
+    - `python -m compileall app/services/grading_monitoring.py app/services/__init__.py tests/test_grading_monitoring_detail.py` passed
+    - `pytest tests/test_grading_monitoring_detail.py -q` passed (`4 passed`)
+- Milestone 2 Phase 6 Stream C execution completed (`2026-03-17`) and tasks moved to `IN REVIEW`:
+  - `P2.6.12` (`EDA-162`): `app/services/grading_monitoring.py` now exposes `get_monitoring_conversation_detail()` with canonical grade-row lookup, same-day transcript assembly, grouped grade-panel sections, read-time highlight badges, and clean not-found handling for missing grade rows or corrupt/missing same-day transcript data; `app/services/__init__.py` exports the new detail symbols.
+  - `P2.6.13` (`EDA-163`): monitoring detail now appends bounded same-identity grade history ordered newest-first, excludes the current grade row, reuses canonical highlight evaluation for history badges, and keeps `conversation_key` linkage stable for the preserved full-conversation route.
+  - `P2.6.14` (`EDA-164`): `tests/test_grading_monitoring_detail.py` now locks in grouped detail payload shape, transcript ordering, empty-history behavior, recent-history ordering/limit enforcement, and grade-not-found/corrupt-transcript failure paths.
+  - Stream C validation status:
+    - `python -m compileall app/services/grading_monitoring.py app/services/__init__.py tests/test_grading_monitoring_detail.py` passed
+    - `pytest tests/test_grading_monitoring_detail.py -q` passed (`4 passed`)
+- Milestone 2 Phase 6 Stream B execution completed (`2026-03-17`) and tasks moved to `IN REVIEW`:
+  - `P2.6.9` (`EDA-159`): `app/services/grading_monitoring.py` now provides a canonical customer-day monitoring list query with server-side window filters, resolution/escalation/intent/score filters, total-count pagination, and deterministic ordering by `grade_date DESC`, same-day latest activity DESC, then `grade_id DESC`; `app/services/__init__.py` exports the new list-query types/service entry point.
+  - `P2.6.10` (`EDA-160`): the monitoring list path now enriches rows with same-day contact name, latest preview text, message count, canonical intent metadata, read-time highlight badges, and Phase 5 freshness metadata via `get_monitoring_conversation_list()`.
+  - `P2.6.11` (`EDA-161`): `tests/test_grading_monitoring.py` now locks in default ordering, explicit sort/filter behavior, preview selection, highlight enrichment, and empty-window freshness behavior for the monitoring list service surface.
+  - Stream B validation status:
+    - `python -m compileall app/services/grading_monitoring.py app/services/__init__.py tests/test_grading_monitoring.py` passed
+    - `pytest tests/test_grading_monitoring.py -q` passed (`5 passed`)
+    - `pytest tests/test_grading_monitoring.py -q -k "list"` passed (`5 passed`)
+- Milestone 2 Phase 6 Stream A rereview completed (`2026-03-16`):
+  - Approved and moved to `DONE`:
+    - `P2.6.6` (`EDA-156`)
+    - `P2.6.7` (`EDA-157`)
+    - `P2.6.8` (`EDA-158`)
+  - Rereview outcomes:
+    - `load_monitoring_highlight_rules()` now treats both missing active rows and SQLAlchemy config-read failures as seeded-default fallback cases, logging warnings instead of failing analyst-facing monitoring reads.
+    - read-time highlight evaluation still returns only canonical `MonitoringHighlightBadge` values in the shared registry order.
+    - the Stream A test suite now covers active seeded-config reads, missing-row fallback, inactive-row fallback, SQLAlchemy read-failure fallback, per-trigger behavior, disabled toggles, and multi-trigger badge ordering.
+  - Rereview validation status:
+    - `python -m compileall app/services/monitoring_highlights.py app/services/__init__.py tests/test_monitoring_highlights.py` passed
+    - `pytest tests/test_monitoring_highlights.py -q` passed (`12 passed`)
 - Milestone 2 Phase 6 Gate 6.0 rereview completed (`2026-03-16`):
   - Approved and moved to `DONE`:
     - `P2.6.3` (`EDA-153`)
@@ -704,7 +797,7 @@
       - pre/post source table counts unchanged (`Arabia Insurance Chats=9090`, `usage_notifications=0`)
 
 ## Next Recommended Action
-- Begin Stream A (`P2.6.6` through `P2.6.8`) to implement active highlight-config loading, fallback behavior, and read-time badge evaluation.
+- Begin Phase 7 end-to-end QA/hardening across the new monitoring routes, Phase 5 metrics routes, and the preserved legacy `/api/v1/conversations/{conversation_key}/messages` surface.
 
 ## Notes
 - Kanban MCP is reachable and synchronized with current execution state.

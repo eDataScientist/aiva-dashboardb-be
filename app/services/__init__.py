@@ -83,11 +83,17 @@ from app.services.grading_metrics import (
     resolve_grading_metrics_window,
 )
 from app.services.grading_monitoring import (
+    MonitoringConversationNotFoundError,
+    MonitoringConversationListPage,
+    MonitoringConversationListRow,
     MonitoringDateWindow,
     build_monitoring_detail_stmt,
     build_monitoring_history_stmt,
     build_monitoring_list_stmt,
     build_monitoring_same_day_messages_stmt,
+    get_monitoring_conversation_list,
+    get_monitoring_conversation_detail,
+    list_monitoring_conversation_grades,
 )
 from app.services.grading_provider import (
     GradingProviderError,
@@ -133,7 +139,9 @@ from app.services.monitoring_highlights import (
     MonitoringHighlightRuleSet,
     build_active_monitoring_highlight_config_stmt,
     canonical_monitoring_highlight_labels,
+    evaluate_monitoring_highlights,
     get_monitoring_highlight_defaults,
+    load_monitoring_highlight_rules,
 )
 from app.services.grading_persistence import upsert_customer_day_grade
 
@@ -165,6 +173,9 @@ __all__ = [
     "GradingRunValidationError",
     "GradingRunWriter",
     "MonitoringDateWindow",
+    "MonitoringConversationListPage",
+    "MonitoringConversationListRow",
+    "MonitoringConversationNotFoundError",
     "MonitoringHighlightRuleSet",
     "GradingPipelineDependencies",
     "GradingPromptAssetError",
@@ -202,6 +213,9 @@ __all__ = [
     "build_monitoring_history_stmt",
     "build_monitoring_list_stmt",
     "build_monitoring_same_day_messages_stmt",
+    "get_monitoring_conversation_list",
+    "get_monitoring_conversation_detail",
+    "list_monitoring_conversation_grades",
     "build_outcome_trend_grades_stmt",
     "build_previous_day_window",
     "build_scheduled_batch_runner",
@@ -213,11 +227,13 @@ __all__ = [
     "get_intent_distribution",
     "get_intent_trend",
     "get_monitoring_highlight_defaults",
+    "load_monitoring_highlight_rules",
     "build_summary_grades_stmt",
     "build_run_create_params",
     "build_scheduled_batch_execution_request",
     "canonical_identity_type_expr",
     "canonical_monitoring_highlight_labels",
+    "evaluate_monitoring_highlights",
     "canonical_identity_value_expr",
     "create_queued_grading_run",
     "determine_terminal_run_status",

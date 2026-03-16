@@ -286,11 +286,39 @@
 | D.3 | `P2.6.17 - QA - Run compile and targeted pytest verification for monitoring scope - Stream D (Dependent)` | Execute compile and focused pytest verification for highlight, monitoring service, route, and preserved-conversation-link contracts. | `P2.6.16` | No mandatory code files; QA notes in task records | `python -m compileall app tests` and targeted monitoring pytest suites. |
 | D.4 | `P2.6.18 - Docs - Update task/progress docs with Phase 6 execution notes and Phase 7 handoff risks - Stream D (Dependent)` | Sync docs after execution/review and capture any remaining monitoring/runtime risks for the final QA phase. | `P2.6.17` | `docs/tasks.md`, `docs/project-progress.md`, `docs/milestone-2/m2-phase-6.md` | Documentation review for status consistency and handoff readiness. |
 
+### Stream D Execution Snapshot (`2026-03-17`)
+- `P2.6.15` (`EDA-165`) added `app/api/routes/grading_monitoring.py`, registered the new router through `app/api/routes/__init__.py` and `app/api/router.py`, and exposed stable monitoring validation/not-found envelopes without mutating legacy conversation-route semantics.
+- `P2.6.16` (`EDA-166`) added `tests/test_grading_monitoring_api.py` coverage for auth, invalid date-window/filter/sort envelopes, empty-state freshness, populated list/detail payloads, and stable `grade_not_found` responses.
+- `P2.6.17` (`EDA-167`) captured verification evidence:
+  - `python -m compileall app tests` passed
+  - `pytest tests/test_monitoring_highlights.py tests/test_grading_monitoring.py tests/test_grading_monitoring_detail.py tests/test_grading_monitoring_api.py -q` passed (`31 passed`)
+  - only third-party Paramiko deprecation warnings were emitted by the test environment
+- `P2.6.18` (`EDA-168`) synchronized `docs/tasks.md`, `docs/project-progress.md`, and this phase plan with the Stream D execution state and Phase 7 handoff note.
+
+### Stream D Review-Fix Snapshot (`2026-03-17`)
+- `P2.6.15` (`EDA-165`) extended `app/main.py` so monitoring `RequestValidationError` / Pydantic validation failures are classified into the monitoring error envelope as well:
+  - malformed date and numeric query parsing now return monitoring `detail` objects instead of raw FastAPI error arrays
+  - malformed `grade_id` path parsing now returns monitoring `grade_not_found` code in the normalized envelope
+- `P2.6.16` (`EDA-166`) expanded `tests/test_grading_monitoring_api.py` with malformed `start_date`, malformed `frustration_min`, and malformed `grade_id` coverage to lock the end-to-end validation contract.
+- `P2.6.17` (`EDA-167`) refreshed verification evidence:
+  - `python -m compileall app/main.py app/api/routes/grading_monitoring.py tests/test_grading_monitoring_api.py` passed
+  - `pytest tests/test_grading_monitoring_api.py -q` passed (`12 passed`)
+  - `pytest tests/test_monitoring_highlights.py tests/test_grading_monitoring.py tests/test_grading_monitoring_detail.py tests/test_grading_monitoring_api.py -q` passed (`34 passed`)
+  - only third-party Paramiko deprecation warnings were emitted by the test environment
+- `P2.6.18` (`EDA-168`) updated the Stream D execution notes so validation-envelope claims only apply after the malformed-input normalization fix landed.
+
+### Stream D Review Completion (`2026-03-17`)
+- `P2.6.15` (`EDA-165`) approved after rereview confirmed the monitoring routes preserve legacy conversation semantics while normalizing malformed monitoring query/path inputs into the documented envelope.
+- `P2.6.16` (`EDA-166`) approved after the API suite expanded to cover malformed `start_date`, malformed `frustration_min`, and malformed `grade_id` parsing in addition to the previously covered monitoring route contract cases.
+- `P2.6.17` (`EDA-167`) approved after unrestricted rerun of the full monitoring verification bundle passed with `34 passed`.
+- `P2.6.18` (`EDA-168`) approved after the docs were synchronized with the review-fix outcome and the Phase 7 QA handoff state.
+- Phase 6 is complete; the next step is Phase 7 end-to-end QA/hardening across monitoring, graded metrics, and the preserved legacy full-conversation route.
+
 ### Stream D Acceptance Criteria
-- [ ] Monitoring routes are protected and registered without altering legacy conversation-route semantics.
-- [ ] API tests cover auth, validation, empty-state, populated-state, and not-found contracts.
-- [ ] Compile and targeted pytest verification are executed or blockers are explicitly documented.
-- [ ] Docs remain synchronized with Phase 6 execution and Phase 7 handoff state.
+- [x] Monitoring routes are protected and registered without altering legacy conversation-route semantics.
+- [x] API tests cover auth, validation, empty-state, populated-state, and not-found contracts.
+- [x] Compile and targeted pytest verification are executed or blockers are explicitly documented.
+- [x] Docs remain synchronized with Phase 6 execution and Phase 7 handoff state.
 
 ## Suggested Files by Concern
 - Config and constants:
@@ -345,13 +373,13 @@ Gate 6.0 (P2.6.1 - P2.6.5 monitoring contract + readiness) -------+
 ```
 
 ## Definition of Done (Phase 6)
-- [ ] New monitoring endpoints exist under `/api/v1/monitoring/conversations`.
-- [ ] Monitoring list is customer-day grade driven, server-side filtered/sorted/paginated, and highlight-aware.
-- [ ] Monitoring detail combines same-day transcript, grouped grade panel, and recent grade-history timeline.
-- [ ] Existing `/api/v1/conversations/{conversation_key}/messages` remains the preserved full-conversation surface across time.
-- [ ] Highlights are computed on read from configurable rules with stable fallback behavior.
-- [ ] Targeted highlight, monitoring service, and monitoring API tests exist for the modified scope.
-- [ ] No lint/syntax errors exist in modified Python modules.
+- [x] New monitoring endpoints exist under `/api/v1/monitoring/conversations`.
+- [x] Monitoring list is customer-day grade driven, server-side filtered/sorted/paginated, and highlight-aware.
+- [x] Monitoring detail combines same-day transcript, grouped grade panel, and recent grade-history timeline.
+- [x] Existing `/api/v1/conversations/{conversation_key}/messages` remains the preserved full-conversation surface across time.
+- [x] Highlights are computed on read from configurable rules with stable fallback behavior.
+- [x] Targeted highlight, monitoring service, and monitoring API tests exist for the modified scope.
+- [x] No lint/syntax errors exist in modified Python modules.
 
 ## Test Scenarios (Phase 6 Validation)
 
