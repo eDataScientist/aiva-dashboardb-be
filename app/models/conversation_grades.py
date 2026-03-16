@@ -74,6 +74,21 @@ class ConversationGrade(Base):
             "escalation_type",
         ),
         Index(
+            "ix_conversation_grades_grade_date_resolution",
+            "grade_date",
+            "resolution",
+        ),
+        Index(
+            "ix_conversation_grades_grade_date_frustration_score",
+            "grade_date",
+            "frustration_score",
+        ),
+        Index(
+            "ix_conversation_grades_grade_date_accuracy_score",
+            "grade_date",
+            "accuracy_score",
+        ),
+        Index(
             "uq_conversation_grades_identity_day",
             "identity_type",
             "conversation_identity",

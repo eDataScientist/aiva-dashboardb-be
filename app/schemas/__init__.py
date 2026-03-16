@@ -71,6 +71,19 @@ from app.schemas.grading_metrics import (
     GradingScoreTrendPoint,
     GradingScoreTrendResponse,
 )
+from app.schemas.grading_monitoring import (
+    MonitoringConversationDetail,
+    MonitoringConversationDetailResponse,
+    MonitoringConversationHistoryItem,
+    MonitoringConversationListQuery,
+    MonitoringConversationListResponse,
+    MonitoringConversationSummary,
+    MonitoringConversationTranscriptMessage,
+    MonitoringErrorCode,
+    MonitoringErrorResponse,
+    MonitoringGradePanel,
+    MonitoringHighlightBadge,
+)
 from app.schemas.grading_runs import (
     GradingRunDetailResponse,
     GradingRunErrorCode,
@@ -160,4 +173,15 @@ __all__ = [
     "GradingOutcomeTrendResponse",
     "GradingScoreTrendPoint",
     "GradingScoreTrendResponse",
+    "MonitoringConversationDetail",
+    "MonitoringConversationDetailResponse",
+    "MonitoringConversationHistoryItem",
+    "MonitoringConversationListQuery",
+    "MonitoringConversationListResponse",
+    "MonitoringConversationSummary",
+    "MonitoringConversationTranscriptMessage",
+    "MonitoringErrorCode",
+    "MonitoringErrorResponse",
+    "MonitoringGradePanel",
+    "MonitoringHighlightBadge",
 ]

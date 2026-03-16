@@ -12,6 +12,9 @@ from app.core.constants import (
     GRADING_DEFAULT_MODEL,
     GRADING_METRICS_DEFAULT_WINDOW_DAYS,
     GRADING_DEFAULT_PROMPT_VERSION,
+    MONITORING_DEFAULT_PAGE_SIZE,
+    MONITORING_DEFAULT_RECENT_HISTORY_LIMIT,
+    MONITORING_DEFAULT_WINDOW_DAYS,
     GRADING_PROMPT_DOMAIN_ORDER,
     GRADING_PROMPT_DOMAIN_SYSTEM_PROMPT_KEYS,
     GRADING_PROMPT_DOMAIN_TO_TEMPLATE_FILE,
@@ -132,6 +135,26 @@ class Settings(BaseSettings):
     grading_metrics_max_window_days: int = Field(
         default=366,
         description="Maximum inclusive graded-metrics date window in GST days.",
+    )
+    monitoring_default_window_days: int = Field(
+        default=MONITORING_DEFAULT_WINDOW_DAYS,
+        description="Default inclusive monitoring date window in GST days.",
+    )
+    monitoring_max_window_days: int = Field(
+        default=31,
+        description="Maximum inclusive monitoring date window in GST days.",
+    )
+    monitoring_default_page_size: int = Field(
+        default=MONITORING_DEFAULT_PAGE_SIZE,
+        description="Default monitoring page size.",
+    )
+    monitoring_max_page_size: int = Field(
+        default=200,
+        description="Maximum monitoring page size.",
+    )
+    monitoring_default_recent_history_limit: int = Field(
+        default=MONITORING_DEFAULT_RECENT_HISTORY_LIMIT,
+        description="Default maximum recent-history entries returned in monitoring detail.",
     )
 
     @field_validator("database_url")
@@ -269,14 +292,31 @@ class Settings(BaseSettings):
     @field_validator(
         "grading_metrics_default_window_days",
         "grading_metrics_max_window_days",
+        "monitoring_default_window_days",
+        "monitoring_max_window_days",
     )
     @classmethod
-    def validate_grading_metrics_window_days(cls, value: int, info) -> int:
+    def validate_window_day_settings(cls, value: int, info) -> int:
         if value <= 0:
             raise ValueError(f"{info.field_name.upper()} must be greater than 0.")
         if value > 366:
             raise ValueError(
                 f"{info.field_name.upper()} must be less than or equal to 366."
+            )
+        return value
+
+    @field_validator(
+        "monitoring_default_page_size",
+        "monitoring_max_page_size",
+        "monitoring_default_recent_history_limit",
+    )
+    @classmethod
+    def validate_monitoring_page_and_history_settings(cls, value: int, info) -> int:
+        if value <= 0:
+            raise ValueError(f"{info.field_name.upper()} must be greater than 0.")
+        if value > 500:
+            raise ValueError(
+                f"{info.field_name.upper()} must be less than or equal to 500."
             )
         return value
 
@@ -315,6 +355,16 @@ class Settings(BaseSettings):
             raise ValueError(
                 "GRADING_METRICS_DEFAULT_WINDOW_DAYS must be less than or equal to "
                 "GRADING_METRICS_MAX_WINDOW_DAYS."
+            )
+        if self.monitoring_default_window_days > self.monitoring_max_window_days:
+            raise ValueError(
+                "MONITORING_DEFAULT_WINDOW_DAYS must be less than or equal to "
+                "MONITORING_MAX_WINDOW_DAYS."
+            )
+        if self.monitoring_default_page_size > self.monitoring_max_page_size:
+            raise ValueError(
+                "MONITORING_DEFAULT_PAGE_SIZE must be less than or equal to "
+                "MONITORING_MAX_PAGE_SIZE."
             )
         return self
 

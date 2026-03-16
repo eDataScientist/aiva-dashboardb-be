@@ -3,9 +3,58 @@
 ## Project
 - Name: `aiva-dashboard-be`
 - Current Milestone: `Milestone 2 - AI Grading, Monitoring, and Access Foundations`
-- Current Phase: `Milestone 2 Phase 5 - AI Quality Metrics API`
+- Current Phase: `Milestone 2 Phase 6 - Conversations Monitoring API Overhaul`
 
 ## Current Status
+- Milestone 2 Phase 6 Gate 6.0 rereview completed (`2026-03-16`):
+  - Approved and moved to `DONE`:
+    - `P2.6.3` (`EDA-153`)
+  - Rereview outcomes:
+    - `.env.example` now documents `MONITORING_DEFAULT_WINDOW_DAYS`, `MONITORING_MAX_WINDOW_DAYS`, `MONITORING_DEFAULT_PAGE_SIZE`, `MONITORING_MAX_PAGE_SIZE`, and `MONITORING_DEFAULT_RECENT_HISTORY_LIMIT`, bringing the runtime config contract in line with the implemented settings validators.
+    - Gate 6.0 (`P2.6.1` through `P2.6.5`) is now fully approved.
+  - Rereview validation status:
+    - `python -m compileall app/core/constants.py app/core/config.py app/core/__init__.py tests/test_grading_config.py` passed
+    - `pytest tests/test_grading_config.py -q` passed (`15 passed`)
+- Milestone 2 Phase 6 Gate 6.0 review progressed (`2026-03-16`):
+  - Approved and moved to `DONE`:
+    - `P2.6.1` (`EDA-151`)
+    - `P2.6.2` (`EDA-152`)
+    - `P2.6.4` (`EDA-154`)
+    - `P2.6.5` (`EDA-155`)
+  - Returned for fixes and kept in `IN REVIEW`:
+    - `P2.6.3` (`EDA-153`)
+  - Review findings:
+    - `app/core/config.py` and `tests/test_grading_config.py` correctly add and validate the monitoring window, page-size, and recent-history settings, but `.env.example` does not expose the new `MONITORING_*` variables, so the runtime config contract is incomplete for operators.
+  - Review validation status:
+    - `python -m compileall app/core/constants.py app/core/config.py app/core/__init__.py app/models/conversation_grades.py app/schemas/grading_monitoring.py app/schemas/__init__.py app/services/grading_monitoring.py app/services/monitoring_highlights.py app/services/__init__.py tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_monitoring_scaffold.py` passed
+    - `pytest tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_monitoring_scaffold.py -q` passed (`44 passed`)
+- Milestone 2 Phase 6 `P2.6.3` review fix applied (`2026-03-16`):
+  - Added the missing monitoring runtime settings to `.env.example`:
+    - `MONITORING_DEFAULT_WINDOW_DAYS`
+    - `MONITORING_MAX_WINDOW_DAYS`
+    - `MONITORING_DEFAULT_PAGE_SIZE`
+    - `MONITORING_MAX_PAGE_SIZE`
+    - `MONITORING_DEFAULT_RECENT_HISTORY_LIMIT`
+  - Validation:
+    - `pytest tests/test_grading_config.py -q` passed (`15 passed`)
+  - Task state:
+    - `P2.6.3` (`EDA-153`) returned to `IN REVIEW` for re-review
+- Milestone 2 Phase 6 Gate 6.0 execution started (`2026-03-16`):
+  - `P2.6.1`: monitoring route strategy, current-rules highlight semantics, preserved full-conversation linkage, and authenticated-any-role access baseline are explicit in `docs/milestone-2/m2-phase-6.md` and `docs/milestone-2/milestone-notes.md`
+  - Kanban status could not be advanced because Phase 6 issues have not been created on project `aiva-dashboard-be`; canonical state is tracked in `docs/tasks.md`
+- Milestone 2 Phase 6 Gate 6.0 execution continued (`2026-03-16`) and tasks moved to `IN REVIEW` in docs:
+  - `P2.6.2`: added bounded Phase 6 monitoring read indexes in `app/models/conversation_grades.py` and Alembic revision `9e8a6f7c1d2b_add_phase6_monitoring_read_indexes.py` for `grade_date + resolution`, `grade_date + frustration_score`, and `grade_date + accuracy_score`; existing identity-day uniqueness/index coverage was kept for detail/history lookups
+  - `P2.6.3`: added monitoring defaults/bounds for window size, page size, recent-history limit, and canonical sort controls in `app/core/constants.py`, `app/core/config.py`, and `app/core/__init__.py`
+  - `P2.6.4`: added typed monitoring query/list/detail/error schemas in `app/schemas/grading_monitoring.py` and exported them through `app/schemas/__init__.py`
+  - `P2.6.5`: added monitoring query/highlight scaffold modules in `app/services/grading_monitoring.py`, `app/services/monitoring_highlights.py`, and `app/services/__init__.py`
+  - Gate 6.0 validation status:
+    - `pytest tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_monitoring_scaffold.py -q` passed (`44 passed`)
+    - `python -m compileall app/core/constants.py app/core/config.py app/core/__init__.py app/models/conversation_grades.py app/schemas/grading_monitoring.py app/schemas/__init__.py app/services/grading_monitoring.py app/services/monitoring_highlights.py app/services/__init__.py tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_monitoring_scaffold.py` passed
+- Milestone 2 Phase 6 detailed plan created (`2026-03-13`):
+  - added `docs/milestone-2/m2-phase-6.md` with Gate 6.0 plus Streams A-D for highlight evaluation, customer-day monitoring list/detail, recent grade-history linkage, and API/QA/docs handoff
+  - synchronized `docs/tasks.md` with `P2.6.1` through `P2.6.18`
+  - synchronized `docs/milestone-2/milestone-notes.md` with the additive monitoring route strategy, preserved full-conversation surface, current-rules highlight semantics, and authenticated-any-role access baseline
+  - Kanban board check confirmed no `TODO` or `IN PROGRESS` issues on project `aiva-dashboard-be`; Phase 6 Kanban task creation remains deferred until explicitly requested
 - Milestone 2 Phase 5 Stream D review completed (`2026-03-13`) and tasks moved to `DONE`:
   - Approved and moved to `DONE`:
     - `P2.5.15`
@@ -655,7 +704,7 @@
       - pre/post source table counts unchanged (`Arabia Insurance Chats=9090`, `usage_notifications=0`)
 
 ## Next Recommended Action
-- Begin Milestone 2 Phase 6 (Monitoring Highlights). Phase 5 (`P2.5.1` through `P2.5.18`) is now complete. Phase 6 should reuse the canonical metric keys, intent taxonomy metadata, and freshness semantics established in Phase 5 rather than rebuilding them.
+- Begin Stream A (`P2.6.6` through `P2.6.8`) to implement active highlight-config loading, fallback behavior, and read-time badge evaluation.
 
 ## Notes
 - Kanban MCP is reachable and synchronized with current execution state.

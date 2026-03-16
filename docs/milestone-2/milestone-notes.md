@@ -92,6 +92,15 @@ This document captures milestone-level planning decisions made during discussion
 - Phase 5 access should match the current authenticated analytics baseline (`super_admin`, `company_admin`, and `analyst` allowed) until tenant scoping exists.
 - Intent analytics should expose the canonical 16-code taxonomy with category metadata and optional per-code trend filtering.
 
+## Phase 6 Monitoring API Direction (`2026-03-13`)
+- Phase 6 should add additive analyst monitoring endpoints under `/api/v1/monitoring/conversations` instead of mutating the existing `/api/v1/conversations/*` contracts.
+- The existing `/api/v1/conversations/{conversation_key}/messages` route remains the separate full-conversation view across time; Phase 6 monitoring responses should include `conversation_key` so clients can link to it.
+- Monitoring list/detail should be driven by `conversation_grades` joined to raw chats by canonical identity + GST `grade_date`; `grading_runs` should be read only for latest-successful freshness metadata.
+- Highlights continue to be computed on read from the current active `monitoring_highlight_config`; historical rows use the current-rules view in Phase 6 because config versioning is still out of scope.
+- Phase 6 access should match the existing authenticated analytics/metrics baseline (`super_admin`, `company_admin`, and `analyst` allowed).
+- Monitoring list defaults to the previous GST day, remains config-bounded and paginated server-side, and only exposes explicit sort controls for `frustration_score` and `accuracy_score`.
+- Monitoring detail should include the same-day transcript, full grade panel, recent grade-history timeline, and canonical intent/highlight metadata.
+
 ## Phase Ordering (High-Level)
 - Data contract and migrations should come before auth implementation.
 - The data-contract phase should include models needed for auth/accounts as well as Milestone 2 grading/monitoring support.
@@ -134,4 +143,3 @@ This document captures milestone-level planning decisions made during discussion
 
 ## Open Questions to Track (Milestone-Level)
 - Phase 2 SRS text says a fixed 16-label intent taxonomy, but the listed labels currently total 15 (needs confirmation in phase planning).
-- Historical highlight behavior after config changes (current-rules view vs historical-rules view) is not yet finalized.

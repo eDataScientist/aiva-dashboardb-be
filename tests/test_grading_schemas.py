@@ -11,6 +11,13 @@ from app.schemas.grading_metrics import (
     GradingMetricsWindowQuery,
     GradingMetricsSummaryResponse,
 )
+from app.schemas.grading_monitoring import (
+    MonitoringConversationDetailResponse,
+    MonitoringConversationListQuery,
+    MonitoringConversationListResponse,
+    MonitoringConversationSummary,
+    MonitoringErrorResponse,
+)
 from app.schemas.grading_prompts import (
     PromptDomain,
     PromptPackManifest,
@@ -361,3 +368,135 @@ def test_grading_metrics_summary_response_accepts_canonical_payload() -> None:
 
     assert response.average_scores.relevancy == 8.1
     assert response.escalation_breakdown[0].escalation_type.value == "Natural"
+
+
+def test_monitoring_conversation_list_query_defaults_to_previous_gst_day() -> None:
+    query = MonitoringConversationListQuery()
+
+    assert query.start_date is not None
+    assert query.end_date is not None
+    assert query.start_date == query.end_date
+    assert query.limit == 50
+    assert query.offset == 0
+    assert query.sort_by is None
+    assert query.sort_direction == "desc"
+
+
+def test_monitoring_conversation_list_query_rejects_unsupported_sort_field() -> None:
+    with pytest.raises(ValidationError):
+        MonitoringConversationListQuery(sort_by="grade_date")
+
+
+def test_monitoring_conversation_list_query_normalizes_and_deduplicates_filters() -> None:
+    query = MonitoringConversationListQuery(
+        intent_codes=[" policy_inquiry ", "policy_inquiry", "complaint"],
+        escalation_types=[" failure ", "Failure", "None"],
+    )
+
+    assert query.intent_codes == ["policy_inquiry", "complaint"]
+    assert query.escalation_types == ["Failure", "None"]
+
+
+def test_monitoring_conversation_summary_requires_canonical_metadata_alignment() -> None:
+    with pytest.raises(ValidationError):
+        MonitoringConversationSummary(
+            grade_id="df35ea32-c0b2-46e4-954e-7707b9d3a62b",
+            grade_date="2026-03-11",
+            conversation_key="phone:+971500000001",
+            contact_name="Jane Doe",
+            latest_message_preview="Customer needs help with policy details.",
+            latest_message_at="2026-03-11T12:00:00",
+            message_count=4,
+            intent_code="policy_inquiry",
+            intent_label="Claims Submission",
+            intent_category="Policy Related",
+            resolution=True,
+            escalation_type="None",
+            frustration_score=2,
+            accuracy_score=8,
+            highlights=[],
+        )
+
+
+def test_monitoring_conversation_list_response_accepts_canonical_payload() -> None:
+    response = MonitoringConversationListResponse(
+        date_window={"start_date": "2026-03-11", "end_date": "2026-03-11"},
+        total=1,
+        limit=50,
+        offset=0,
+        items=[
+            {
+                "grade_id": "df35ea32-c0b2-46e4-954e-7707b9d3a62b",
+                "grade_date": "2026-03-11",
+                "conversation_key": "phone:+971500000001",
+                "contact_name": "Jane Doe",
+                "latest_message_preview": "Customer needs help with policy details.",
+                "latest_message_at": "2026-03-11T12:00:00",
+                "message_count": 4,
+                "intent_code": "policy_inquiry",
+                "intent_label": "Policy Inquiry",
+                "intent_category": "Policy Related",
+                "resolution": True,
+                "escalation_type": "None",
+                "frustration_score": 2,
+                "accuracy_score": 8,
+                "highlights": [
+                    {"code": "frustration_high", "label": "High Frustration"}
+                ],
+            }
+        ],
+        freshness={
+            "latest_successful_run_id": "df35ea32-c0b2-46e4-954e-7707b9d3a62b",
+            "latest_successful_window_end_date": "2026-03-11",
+            "latest_successful_run_finished_at": "2026-03-12T10:00:00",
+        },
+    )
+
+    assert response.items[0].intent_label == "Policy Inquiry"
+    assert response.items[0].highlights[0].code == "frustration_high"
+
+
+def test_monitoring_conversation_detail_response_accepts_grouped_payload() -> None:
+    response = MonitoringConversationDetailResponse(
+        detail={
+            "grade_id": "df35ea32-c0b2-46e4-954e-7707b9d3a62b",
+            "grade_date": "2026-03-11",
+            "conversation_key": "phone:+971500000001",
+            "contact_name": "Jane Doe",
+            "intent_code": "policy_inquiry",
+            "intent_label": "Policy Inquiry",
+            "intent_category": "Policy Related",
+            "resolution": True,
+            "escalation_type": "None",
+            "frustration_score": 2,
+            "accuracy_score": 8,
+            "highlights": [],
+            "grade_panel": {
+                "ai_performance": {"relevancy_score": 8, "accuracy_score": 8},
+                "conversation_health": {"resolution": True, "loop_detected": False},
+                "user_signals": {"satisfaction_score": 8, "frustration_score": 2},
+                "escalation": {"escalation_occurred": False, "escalation_type": "None"},
+                "intent": {"intent_code": "policy_inquiry", "intent_label": "Policy Inquiry"},
+            },
+            "transcript": [
+                {
+                    "role": "user",
+                    "content": "Need help with my policy.",
+                    "created_at": "2026-03-11T11:00:00",
+                }
+            ],
+            "recent_history": [],
+        }
+    )
+
+    assert response.detail.grade_panel.ai_performance["relevancy_score"] == 8
+    assert response.detail.transcript[0].role == "user"
+
+
+def test_monitoring_error_response_rejects_blank_detail_items() -> None:
+    with pytest.raises(ValidationError):
+        MonitoringErrorResponse(
+            code="invalid_sort",
+            message="Sort is invalid.",
+            details=["   "],
+        )

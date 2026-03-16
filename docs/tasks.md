@@ -79,7 +79,7 @@ Last Updated: `2026-03-02` (Post-completion Stream A review: `P1.2.2` approved; 
 
 ## Milestone 2: AI Grading, Monitoring, and Access Foundations
 Status: `IN PROGRESS`
-Last Updated: `2026-03-13` (Phase 5 Stream D review completed; `P2.5.15` through `P2.5.18` are now `DONE`; Phase 5 is complete; Phase 6 monitoring and Phase 7 QA are next)
+Last Updated: `2026-03-16` (Gate 6.0 rereview completed and `P2.6.1` through `P2.6.5` are now `DONE`; the remaining Phase 6 streams are still pending)
 
 ## Phase 1 - Gate 1.0 (Shared Milestone 2 Data Contracts)
 - [x] `P2.1.1 - Design - Finalize customer-day grade grain and canonical identity contract - Gate (Independent)`
@@ -247,3 +247,34 @@ Phase dependency note: Phase 5 should consume persisted `conversation_grades` fo
 - [x] `P2.5.16 - Test - Add graded metrics API tests for auth, validation, and payload contracts - Stream D (Dependent)` (`P2.5.15`) - `DONE` (`tests/test_grading_metrics_api.py`; `19 passed`; review approved `2026-03-13`)
 - [x] `P2.5.17 - QA - Run compile and targeted pytest verification for metrics API scope - Stream D (Dependent)` (`P2.5.16`) - `DONE` (compile passed; unrestricted `pytest tests/test_grading_metrics_api.py -q` passed `19 passed`; review approved `2026-03-13`)
 - [x] `P2.5.18 - Docs - Update task/progress docs with Phase 5 execution notes and Phase 6/7 handoff risks - Stream D (Dependent)` (`P2.5.17`) - `DONE` (`docs/tasks.md`, `docs/project-progress.md` synchronized with Stream D execution outcomes and Phase 6/7 handoff state; review approved `2026-03-13`)
+
+## Phase 6 - Conversations Monitoring API Overhaul
+Phase dependency note: Phase 6 should reuse the canonical intent metadata, highlight contracts, transcript selectors, and latest-successful freshness semantics already established in Phases 1, 3, and 5 while leaving the legacy `/api/v1/conversations/*` full-conversation surface intact.
+
+## Gate 6.0
+- [x] `P2.6.1 - Design - Finalize monitoring route strategy, highlight semantics, and access matrix - Gate (Independent)` - `DONE` (`docs/milestone-2/m2-phase-6.md`, `docs/milestone-2/milestone-notes.md`; review approved `2026-03-16`)
+- [x] `P2.6.2 - DB - Validate monitoring-read index readiness and add additive indexes if needed - Gate (Dependent)` (`P2.6.1`) - `DONE` (`app/models/conversation_grades.py`, `alembic/versions/9e8a6f7c1d2b_add_phase6_monitoring_read_indexes.py`; review approved `2026-03-16`, additive read indexes verified)
+- [x] `P2.6.3 - Config - Add monitoring query defaults, bounds, and history-limit settings - Gate (Dependent)` (`P2.6.1`) - `DONE` (`app/core/constants.py`, `app/core/config.py`, `app/core/__init__.py`, `tests/test_grading_config.py`, `.env.example`; rereview approved `2026-03-16` after the missing `MONITORING_*` settings were added to `.env.example`)
+- [x] `P2.6.4 - API - Define monitoring list/detail schemas and error payloads - Gate (Dependent)` (`P2.6.1`, `P2.6.3`) - `DONE` (`app/schemas/grading_monitoring.py`, `app/schemas/__init__.py`, `tests/test_grading_schemas.py`; review approved `2026-03-16`)
+- [x] `P2.6.5 - Service - Scaffold monitoring query and highlight module boundaries - Gate (Dependent)` (`P2.6.2`, `P2.6.4`) - `DONE` (`app/services/grading_monitoring.py`, `app/services/monitoring_highlights.py`, `app/services/__init__.py`, `tests/test_grading_monitoring_scaffold.py`; review approved `2026-03-16`)
+
+## Stream A (Highlight Evaluation and Config Fallback)
+- [ ] `P2.6.6 - Service - Implement active highlight-config loader with seeded-default fallback - Stream A (Dependent)` (`P2.6.5`)
+- [ ] `P2.6.7 - Service - Implement read-time highlight evaluation and badge mapping for grade rows - Stream A (Dependent)` (`P2.6.6`)
+- [ ] `P2.6.8 - Test - Add deterministic highlight config and trigger tests - Stream A (Dependent)` (`P2.6.7`)
+
+## Stream B (Customer-Day Monitoring List)
+- [ ] `P2.6.9 - Service - Implement customer-day monitoring list query with filters, pagination, and deterministic ordering - Stream B (Dependent)` (`P2.6.5`)
+- [ ] `P2.6.10 - Service - Enrich monitoring list items with highlight badges, intent metadata, previews, and freshness - Stream B (Dependent)` (`P2.6.7`, `P2.6.9`)
+- [ ] `P2.6.11 - Test - Add deterministic monitoring list service tests - Stream B (Dependent)` (`P2.6.10`)
+
+## Stream C (Customer-Day Detail, Timeline, and Full-Conversation Linkage)
+- [ ] `P2.6.12 - Service - Implement customer-day detail query with same-day transcript and full grade panel - Stream C (Dependent)` (`P2.6.5`, `P2.6.7`)
+- [ ] `P2.6.13 - Service - Add grade-history timeline and full-conversation linkage to monitoring detail - Stream C (Dependent)` (`P2.6.12`)
+- [ ] `P2.6.14 - Test - Add deterministic monitoring detail service tests - Stream C (Dependent)` (`P2.6.13`)
+
+## Stream D (API, Validation, and Phase 7 Handoff)
+- [ ] `P2.6.15 - API - Add protected monitoring list and detail endpoints - Stream D (Dependent)` (`P2.6.8`, `P2.6.11`, `P2.6.14`)
+- [ ] `P2.6.16 - Test - Add monitoring API tests for auth, filters, sort, detail, and error contracts - Stream D (Dependent)` (`P2.6.15`)
+- [ ] `P2.6.17 - QA - Run compile and targeted pytest verification for monitoring scope - Stream D (Dependent)` (`P2.6.16`)
+- [ ] `P2.6.18 - Docs - Update task/progress docs with Phase 6 execution notes and Phase 7 handoff risks - Stream D (Dependent)` (`P2.6.17`)

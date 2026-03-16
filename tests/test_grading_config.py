@@ -7,6 +7,8 @@ from app.core.constants import (
     GRADING_METRICS_OUTCOME_RATE_KEYS,
     GRADING_METRICS_SCORE_KEYS,
     GRADING_RUN_SUCCESSFUL_STATUSES,
+    MONITORING_ALLOWED_SORT_DIRECTIONS,
+    MONITORING_ALLOWED_SORT_FIELDS,
     INTENT_CATEGORIES,
     INTENT_CODE_TO_CATEGORY,
     INTENT_CODES,
@@ -40,6 +42,11 @@ def test_settings_default_to_mock_grading_provider() -> None:
     assert settings.grading_batch_allow_mock_provider_runs is False
     assert settings.grading_metrics_default_window_days == 30
     assert settings.grading_metrics_max_window_days == 366
+    assert settings.monitoring_default_window_days == 1
+    assert settings.monitoring_max_window_days == 31
+    assert settings.monitoring_default_page_size == 50
+    assert settings.monitoring_max_page_size == 200
+    assert settings.monitoring_default_recent_history_limit == 30
     assert settings.grading_batch_timezone == "Asia/Dubai"
 
 
@@ -79,6 +86,35 @@ def test_settings_reject_metrics_default_window_larger_than_maximum() -> None:
             **_base_settings(
                 grading_metrics_default_window_days=31,
                 grading_metrics_max_window_days=30,
+            )
+        )
+
+
+def test_settings_reject_monitoring_default_window_larger_than_maximum() -> None:
+    with pytest.raises(ValidationError):
+        Settings(
+            **_base_settings(
+                monitoring_default_window_days=32,
+                monitoring_max_window_days=31,
+            )
+        )
+
+
+def test_settings_reject_monitoring_default_page_size_larger_than_maximum() -> None:
+    with pytest.raises(ValidationError):
+        Settings(
+            **_base_settings(
+                monitoring_default_page_size=201,
+                monitoring_max_page_size=200,
+            )
+        )
+
+
+def test_settings_reject_invalid_monitoring_recent_history_limit() -> None:
+    with pytest.raises(ValidationError):
+        Settings(
+            **_base_settings(
+                monitoring_default_recent_history_limit=0,
             )
         )
 
@@ -155,3 +191,8 @@ def test_phase5_metric_registry_constants_remain_aligned() -> None:
         "Non-genuine",
         "System Fallback",
     )
+    assert MONITORING_ALLOWED_SORT_FIELDS == (
+        "frustration_score",
+        "accuracy_score",
+    )
+    assert MONITORING_ALLOWED_SORT_DIRECTIONS == ("asc", "desc")

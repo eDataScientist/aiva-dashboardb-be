@@ -40,6 +40,14 @@ GRADING_RUN_ITEM_FAILURE_STATUSES: Final[frozenset[str]] = frozenset(
 GRADING_DEFAULT_MODEL: Final[str] = "mock-grade-v1"
 GRADING_DEFAULT_PROMPT_VERSION: Final[str] = "v1"
 GRADING_METRICS_DEFAULT_WINDOW_DAYS: Final[int] = 30
+MONITORING_DEFAULT_WINDOW_DAYS: Final[int] = 1
+MONITORING_DEFAULT_PAGE_SIZE: Final[int] = 50
+MONITORING_DEFAULT_RECENT_HISTORY_LIMIT: Final[int] = 30
+MONITORING_ALLOWED_SORT_FIELDS: Final[tuple[str, ...]] = (
+    "frustration_score",
+    "accuracy_score",
+)
+MONITORING_ALLOWED_SORT_DIRECTIONS: Final[tuple[str, ...]] = ("asc", "desc")
 GRADING_PROMPT_PACK_BASE_DIR: Final[str] = "app/prompt_assets/grading"
 GRADING_PROMPT_SYSTEM_PROMPT_FILE: Final[str] = "system_prompt.md"
 GRADING_PROMPT_DOMAIN_ORDER: Final[tuple[str, ...]] = (
