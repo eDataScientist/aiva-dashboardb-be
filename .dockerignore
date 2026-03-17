@@ -1,0 +1,71 @@
+# Version control
+.git/
+.gitignore
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.uv-cache/
+.appdata/
+.localappdata/
+
+# Tests and docs
+tests/
+docs/
+
+# Environment and secrets
+.env
+.env.example
+
+# Data files
+*.csv
+*.json
+*.xlsx
+*.db
+*.sqlite3
+
+# Log files
+*.log
+
+# Temporary files and directories
+tmp*
+
+# Editor/OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude/AI tooling
+.claude/
+
+# Root-level data/temp scripts
+check_cols.py
+generate_conversation_grades.py
+ai_performance_judge.md
+conversation_health.md
+escalation.md
+intent.md
+schema.md
+system_prompt.md
+user-signals.md
+AGENTS.md
+pytest_out.txt
+pytest_out1.txt
+pytest_analytics_out.txt
+pytest.ini
+aiva_dev.db
+
+# Test requirements
+requirements-test.txt

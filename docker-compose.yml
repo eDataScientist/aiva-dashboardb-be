@@ -1,0 +1,26 @@
+services:
+  aiva-backend:
+    build: .
+    container_name: aiva-backend
+    env_file: .env
+    environment:
+      # Container-to-container networking: use postgres_app service name, not localhost
+      DATABASE_URL: postgresql+psycopg2://arabia_insurance:aivaa%40edata.ae@postgres_app:5432/aiva
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - n8n_default
+      - aiva-network
+
+networks:
+  n8n_default:
+    external: true
+  aiva-network:
+    external: true

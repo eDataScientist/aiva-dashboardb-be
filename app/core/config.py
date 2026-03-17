@@ -176,6 +176,10 @@ class Settings(BaseSettings):
         default=MONITORING_DEFAULT_RECENT_HISTORY_LIMIT,
         description="Default maximum recent-history entries returned in monitoring detail.",
     )
+    cors_allowed_origins: str = Field(
+        default="",
+        description="Comma-separated list of allowed CORS origins. Empty disables CORS.",
+    )
 
     @field_validator("database_url")
     @classmethod

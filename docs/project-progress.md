@@ -3,9 +3,14 @@
 ## Project
 - Name: `aiva-dashboard-be`
 - Current Milestone: `Milestone 2 - AI Grading, Monitoring, and Access Foundations`
-- Current Phase: `Milestone 2 Phase 7 - AI Agent Performance Dashboard API`
+- Current Phase: `Milestone 2 Phase 8 - Deployment Readiness`
 
 ## Current Status
+- Milestone 2 Phase 8 Gate 8.0 + Streams A/B/C implemented (`2026-03-17`):
+  - Gate 8.0: `.dockerignore`, split `requirements.txt`/`requirements-test.txt`, `entrypoint.sh`, `Dockerfile`, `docker-compose.yml` created.
+  - Stream A: `cors_allowed_origins` setting added to `app/core/config.py`; `CORSMiddleware` conditionally applied in `app/main.py`.
+  - Stream B: `.env.example` updated with Docker-default `DATABASE_URL` (`postgres_app:5432`); `alembic.ini` fallback URL aligned; `.env` populated with live credentials.
+  - Stream C: `docs/milestone-2/m2-phase-8.md` created; `docs/project-progress.md` updated.
 - Milestone 2 Phase 7 Stream D rereview progressed (`2026-03-17`); `P2.7.15` through `P2.7.17` approved and moved to `DONE`, `P2.7.18` remains `IN REVIEW`:
   - `P2.7.15` (`EDA-177`): review approved and moved to `DONE`; no code changes required.
   - `P2.7.16` (`EDA-178`): rereview approved and moved to `DONE` after `_classify_dashboard_query_error` was fixed to fall back to error-message matching for model-validator errors and two `invalid_limit` API regressions were added (17 tests total).
@@ -937,7 +942,8 @@
       - pre/post source table counts unchanged (`Arabia Insurance Chats=9090`, `usage_notifications=0`)
 
 ## Next Recommended Action
-- Complete `EDA-180` (P2.7.18 docs) rereview to close Phase 7 Stream D, then begin Phase 8 milestone-wide QA/hardening.
+- Verify Phase 8 deployment: `docker compose build` then `docker compose up -d`; confirm health check passes and OpenAPI docs are accessible on `http://localhost:8000/docs`.
+- Complete `EDA-180` (P2.7.18 docs) rereview to close Phase 7 Stream D.
 
 ## Notes
 - Kanban MCP is reachable and synchronized with current execution state.

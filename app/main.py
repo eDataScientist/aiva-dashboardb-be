@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
@@ -118,6 +119,21 @@ def create_app() -> FastAPI:
             status_code=422,
             content=jsonable_encoder({"detail": exc.errors()}),
         )
+
+    if settings.cors_allowed_origins:
+        origins = [
+            origin.strip()
+            for origin in settings.cors_allowed_origins.split(",")
+            if origin.strip()
+        ]
+        if origins:
+            app.add_middleware(
+                CORSMiddleware,
+                allow_origins=origins,
+                allow_credentials=True,
+                allow_methods=["*"],
+                allow_headers=["*"],
+            )
 
     app.include_router(api_router)
     return app
