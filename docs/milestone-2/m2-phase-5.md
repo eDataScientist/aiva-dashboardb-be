@@ -105,7 +105,7 @@
 - Phase dependency: `Milestone 2 Phase 4 complete -> Milestone 2 Phase 5`
 - Downstream impact:
   - Phase 6 monitoring should consume the same canonical metric names, intent taxonomy metadata, and freshness semantics.
-  - Phase 7 QA should validate both the new graded-metrics surface and the continued stability of the older Milestone 1 raw-chat analytics endpoints.
+  - Phase 7 dashboard routes should build on the same graded-metrics semantics, and Phase 8 QA should validate both the new graded-metrics surface and the continued stability of the older Milestone 1 raw-chat analytics endpoints.
 
 ## Phase 5 Contract Outline (Planning Baseline)
 
@@ -288,7 +288,7 @@
 | D.1 | `P2.5.15 - API - Add protected graded metrics endpoints - Stream D (Dependent)` | Implement the `/api/v1/grading/metrics/*` route group and register it in the API router. | `P2.5.8`, `P2.5.11`, `P2.5.14` | `app/api/routes/grading_metrics.py` (new), `app/api/routes/__init__.py`, `app/api/router.py` | Route smoke checks and import/OpenAPI verification. |
 | D.2 | `P2.5.16 - Test - Add graded metrics API tests for auth, validation, and payload contracts - Stream D (Dependent)` | Cover auth behavior, invalid date windows, empty payloads, and populated response contracts. | `P2.5.15` | `tests/test_grading_metrics_api.py` (new), `tests/conftest.py` (fixture extensions if needed) | `pytest tests/test_grading_metrics_api.py -q`. |
 | D.3 | `P2.5.17 - QA - Run compile and targeted pytest verification for metrics API scope - Stream D (Dependent)` | Execute compile and targeted pytest checks for schemas, services, and routes in Phase 5 scope. | `P2.5.16` | No mandatory code files; QA notes in task records | `python -m compileall app tests` and targeted grading-metrics pytest suites. |
-| D.4 | `P2.5.18 - Docs - Update task/progress docs with Phase 5 execution notes and Phase 6/7 handoff risks - Stream D (Dependent)` | Sync docs after execution/review and capture Phase 6 monitoring + Phase 7 QA handoff risks. | `P2.5.17` | `docs/tasks.md`, `docs/project-progress.md`, `docs/milestone-2/m2-phase-5.md` | Documentation review for status consistency and handoff readiness. |
+| D.4 | `P2.5.18 - Docs - Update task/progress docs with Phase 5 execution notes and Phase 6/7 handoff risks - Stream D (Dependent)` | Sync docs after execution/review and capture Phase 6 monitoring plus the downstream dashboard and final hardening handoff risks. | `P2.5.17` | `docs/tasks.md`, `docs/project-progress.md`, `docs/milestone-2/m2-phase-5.md` | Documentation review for status consistency and handoff readiness. |
 
 ### Stream D Acceptance Criteria
 - [x] New graded metrics routes are protected and registered cleanly.

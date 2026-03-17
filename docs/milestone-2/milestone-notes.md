@@ -101,10 +101,25 @@ This document captures milestone-level planning decisions made during discussion
 - Monitoring list defaults to the previous GST day, remains config-bounded and paginated server-side, and only exposes explicit sort controls for `frustration_score` and `accuracy_score`.
 - Monitoring detail should include the same-day transcript, full grade panel, recent grade-history timeline, and canonical intent/highlight metadata.
 
+## Phase 7 Dashboard API Direction (`2026-03-17`)
+- Phase 7 should add additive backend-for-frontend endpoints under `/api/v1/grading/dashboard/*` instead of mutating the existing `/api/v1/grading/metrics/*` or `/api/v1/monitoring/conversations/*` contracts.
+- The backend contract should follow the three dashboard views in `docs/dashboard_spec.md`:
+  - `GET /api/v1/grading/dashboard/agent-pulse`
+  - `GET /api/v1/grading/dashboard/correlations`
+  - `GET /api/v1/grading/dashboard/daily-timeline`
+- Agent Pulse and Correlations should use a bounded GST date window with a shorter dashboard default (`7` days ending on the previous GST day) instead of the broader Phase 5 metrics default.
+- Daily Timeline should use a single `target_date` (default previous GST day) plus a bounded `worst_performers_limit`.
+- Daily Timeline hour bucketing must use same-day raw-chat timestamps joined through canonical identity + `grade_date`; it should not rely on `conversation_grades.created_at`, which reflects grade-row insertion time rather than analyst-facing conversation activity.
+- Story cards and attention signals should be server-generated, deterministic derived insights so the frontend receives ready-to-render severity, metric, and explanation payloads.
+- Phase 7 access should match the current authenticated analytics/metrics/monitoring baseline (`super_admin`, `company_admin`, and `analyst` allowed).
+- Phase 8 is now reserved for milestone-wide QA/hardening after the new dashboard endpoints are implemented.
+
 ## Phase Ordering (High-Level)
 - Data contract and migrations should come before auth implementation.
 - The data-contract phase should include models needed for auth/accounts as well as Milestone 2 grading/monitoring support.
 - Auth/accounts foundation should follow the data-contract phase.
+- Dashboard API work should follow the graded metrics and monitoring implementations so it can reuse their stabilized semantics.
+- Milestone-wide QA/hardening now follows the dashboard API as Phase 8.
 
 ## Conversation/Monitoring Model Direction
 - Milestone 2 monitoring should use a `customer-day` (conversation-day) grain, not the Milestone 1 cross-range conversation list behavior.

@@ -10,6 +10,10 @@ from pydantic import ValidationError
 from app.api.router import api_router
 from app.core import get_settings
 from app.db import check_database_connection, close_database, configure_database
+from app.schemas.grading_dashboard_common import (
+    GradingDashboardErrorCode,
+    GradingDashboardErrorResponse,
+)
 from app.schemas.grading_monitoring import (
     MonitoringErrorCode,
     MonitoringErrorResponse,
@@ -20,6 +24,7 @@ from app.services.grading_scheduler import start_grading_scheduler, stop_grading
 
 _GRADING_RUNS_ROUTE_PATH = "/api/v1/grading/runs"
 _MONITORING_ROUTE_PATH_PREFIX = "/api/v1/monitoring/conversations"
+_DASHBOARD_ROUTE_PATH_PREFIX = "/api/v1/grading/dashboard"
 
 
 @asynccontextmanager
@@ -70,6 +75,12 @@ def create_app() -> FastAPI:
                 status_code=status_code,
                 content=jsonable_encoder({"detail": payload}),
             )
+        if _should_use_dashboard_validation_error(request):
+            payload = _build_dashboard_validation_error(exc.errors())
+            return JSONResponse(
+                status_code=422,
+                content=jsonable_encoder({"detail": payload}),
+            )
 
         return JSONResponse(
             status_code=422,
@@ -94,6 +105,12 @@ def create_app() -> FastAPI:
             payload, status_code = _build_monitoring_validation_error(exc.errors())
             return JSONResponse(
                 status_code=status_code,
+                content=jsonable_encoder({"detail": payload}),
+            )
+        if _should_use_dashboard_validation_error(request):
+            payload = _build_dashboard_validation_error(exc.errors())
+            return JSONResponse(
+                status_code=422,
                 content=jsonable_encoder({"detail": payload}),
             )
 
@@ -169,6 +186,37 @@ def _classify_monitoring_validation_error(
         MonitoringErrorCode.INVALID_DATE_WINDOW,
         "Invalid or out-of-bounds monitoring date window.",
         422,
+    )
+
+
+def _should_use_dashboard_validation_error(request: Request) -> bool:
+    normalized_path = request.url.path.rstrip("/") or "/"
+    return normalized_path.startswith(_DASHBOARD_ROUTE_PATH_PREFIX) and request.method == "GET"
+
+
+def _build_dashboard_validation_error(
+    errors: list[dict[str, object]],
+) -> GradingDashboardErrorResponse:
+    code, message = _classify_dashboard_validation_error(errors)
+    return GradingDashboardErrorResponse(
+        code=code,
+        message=message,
+        details=_normalize_validation_error_details(errors),
+    ).model_dump()
+
+
+def _classify_dashboard_validation_error(
+    errors: list[dict[str, object]],
+) -> tuple[GradingDashboardErrorCode, str]:
+    field_locs = {str(loc) for error in errors for loc in error.get("loc", ())}
+    if "worst_performers_limit" in field_locs:
+        return (
+            GradingDashboardErrorCode.INVALID_LIMIT,
+            "Invalid or out-of-bounds worst-performers limit.",
+        )
+    return (
+        GradingDashboardErrorCode.INVALID_DATE_WINDOW,
+        "Invalid or out-of-bounds dashboard date window.",
     )
 
 

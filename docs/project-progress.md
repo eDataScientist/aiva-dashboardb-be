@@ -3,9 +3,150 @@
 ## Project
 - Name: `aiva-dashboard-be`
 - Current Milestone: `Milestone 2 - AI Grading, Monitoring, and Access Foundations`
-- Current Phase: `Milestone 2 Phase 6 - Conversations Monitoring API Overhaul`
+- Current Phase: `Milestone 2 Phase 7 - AI Agent Performance Dashboard API`
 
 ## Current Status
+- Milestone 2 Phase 7 Stream D rereview progressed (`2026-03-17`); `P2.7.15` through `P2.7.17` approved and moved to `DONE`, `P2.7.18` remains `IN REVIEW`:
+  - `P2.7.15` (`EDA-177`): review approved and moved to `DONE`; no code changes required.
+  - `P2.7.16` (`EDA-178`): rereview approved and moved to `DONE` after `_classify_dashboard_query_error` was fixed to fall back to error-message matching for model-validator errors and two `invalid_limit` API regressions were added (17 tests total).
+  - `P2.7.17` (`EDA-179`): rereview approved and moved to `DONE` after the `EDA-178` fix landed; full dashboard scope rerun passed (`99 passed`).
+  - `P2.7.18` (`EDA-180`): remains `IN REVIEW`; docs consistency pass in progress.
+  - Review-fix validation status:
+    - `python -m compileall app/api/routes/grading_dashboard.py tests/test_grading_dashboard_api.py` passed
+    - `pytest tests/test_grading_dashboard_api.py -q` passed (`17 passed`)
+    - Full dashboard scope: `pytest tests/test_grading_dashboard_api.py tests/test_grading_dashboard_scaffold.py tests/test_grading_dashboard_agent_pulse.py tests/test_grading_dashboard_correlations.py tests/test_grading_dashboard_daily_timeline.py tests/test_grading_config.py tests/test_grading_schemas.py -q` passed (`99 passed`)
+  - Phase 8 handoff risks:
+    - Only third-party Paramiko deprecation warnings remain; no dashboard-specific lint or syntax issues.
+    - Phase 8 QA should validate the new dashboard routes alongside the already-shipped Phase 5 metrics, Phase 6 monitoring, and preserved full-conversation surfaces.
+- Milestone 2 Phase 7 Stream C rereview completed (`2026-03-17`) and tasks moved to `DONE`:
+  - Approved and moved to `DONE`:
+    - `P2.7.12` (`EDA-174`)
+    - `P2.7.13` (`EDA-175`)
+    - `P2.7.14` (`EDA-176`)
+  - Rereview outcomes:
+    - `P2.7.12` (`EDA-174`): the Daily Timeline service now derives both the same-day chat filter and the first-message hour through the shared SQL reporting helper family in `app/services/grading_extraction.py`, so the prior boundary drift is resolved inside one consistent path.
+    - `P2.7.13` (`EDA-175`): no separate scatter-point or worst-performer defect surfaced in rereview; the linkage payload remained stable once the upstream day/hour alignment fix landed.
+    - `P2.7.14` (`EDA-176`): the Daily Timeline suite now covers the `2026-03-09 21:30:00` boundary case in addition to the broader empty-day, hourly, scatter, and worst-performer surface, so the previously missing regression guard is now in place.
+  - Rereview validation status:
+    - `python -m compileall app/services/grading_extraction.py app/services/grading_dashboard_daily_timeline.py tests/test_grading_dashboard_daily_timeline.py` passed
+    - `pytest tests/test_grading_dashboard_daily_timeline.py -q` passed (`19 passed`)
+    - `pytest tests/test_grading_dashboard_scaffold.py tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_dashboard_daily_timeline.py -q` passed (`73 passed`)
+- Milestone 2 Phase 7 Stream C review-fix pass completed (`2026-03-17`) and the tasks remain in `IN REVIEW`:
+  - Updated for rereview:
+    - `P2.7.12` (`EDA-174`)
+    - `P2.7.13` (`EDA-175`)
+    - `P2.7.14` (`EDA-176`)
+  - Review-fix outcomes:
+    - `P2.7.12` (`EDA-174`): the Daily Timeline service now derives both the same-day chat filter and the first-message hour through shared SQL reporting helpers, so day/hour bucketing can no longer drift on boundary timestamps.
+    - `P2.7.13` (`EDA-175`): no direct scatter-point or worst-performer code change was required in the fix pass; the task is unblocked for rereview because the shared Daily Timeline timezone-alignment fix is now in place.
+    - `P2.7.14` (`EDA-176`): the Daily Timeline tests now include a boundary regression for `2026-03-09 21:30:00` and the hourly expectations were realigned to the shared SQL reporting-hour contract.
+  - Review-fix validation status:
+    - `python -m compileall app/services/grading_extraction.py app/services/grading_dashboard_daily_timeline.py tests/test_grading_dashboard_daily_timeline.py` passed
+    - `pytest tests/test_grading_dashboard_daily_timeline.py -q` passed (`19 passed`)
+    - `pytest tests/test_grading_dashboard_scaffold.py tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_dashboard_daily_timeline.py -q` passed (`73 passed`)
+- Milestone 2 Phase 7 Stream C rereview progressed (`2026-03-17`) but the tasks remain in `IN REVIEW`:
+  - Returned to `IN REVIEW` after rereview:
+    - `P2.7.12` (`EDA-174`)
+    - `P2.7.13` (`EDA-175`)
+    - `P2.7.14` (`EDA-176`)
+  - Rereview outcomes:
+    - `P2.7.12` (`EDA-174`): the raw-hour bug was fixed, but the Daily Timeline service still mixes two different GST interpretations because the same-day SQL join uses `gst_grade_date_expr()` while the hourly bucket now uses a separate Python conversion helper; boundary timestamps can therefore resolve to one reporting day and a different reporting hour basis.
+    - `P2.7.13` (`EDA-175`): no separate scatter-point or worst-performer defect was found in rereview, but approval remains blocked on the upstream `EDA-174` timezone-alignment issue in the shared Daily Timeline service module.
+    - `P2.7.14` (`EDA-176`): the test module now catches a fallback to `created_at.hour`, but it still lacks a GST day-boundary regression, so it would not catch the remaining day/hour inconsistency from `EDA-174`.
+  - Rereview validation status:
+    - `python -m compileall app/services/grading_dashboard_daily_timeline.py tests/test_grading_dashboard_daily_timeline.py` passed
+    - `pytest tests/test_grading_dashboard_daily_timeline.py -q` passed (`18 passed`)
+    - PostgreSQL spot check reproduced the mismatch on `2026-03-09 21:30:00`: `cast(timezone('Asia/Dubai', created_at), Date)` resolved to `2026-03-09` and `extract(hour from timezone('Asia/Dubai', created_at))` resolved to `17`, while the new Python conversion maps that timestamp to GST hour `1` on the next day.
+- Milestone 2 Phase 7 Stream C review completed (`2026-03-17`) and missing Kanban issues were created for the reviewed tasks:
+  - Created and moved to `IN REVIEW`:
+    - `P2.7.12` (`EDA-174`)
+    - `P2.7.13` (`EDA-175`)
+    - `P2.7.14` (`EDA-176`)
+  - Review outcomes:
+    - `P2.7.12` (`EDA-174`) requires a fix because `app/services/grading_dashboard_daily_timeline.py` currently derives hourly buckets from raw `created_at.hour`, which is inconsistent with the repo-wide `Asia/Dubai` conversion semantics used for GST reporting.
+    - `P2.7.13` (`EDA-175`) had no separate scatter/worst-performer defect in review, but approval remains blocked on the shared Daily Timeline service fix from `EDA-174`.
+    - `P2.7.14` (`EDA-176`) requires test fixes because the hourly assertions currently encode the same incorrect timezone assumption as the implementation and do not catch GST-hour drift.
+  - Review validation status:
+    - `python -m compileall app/services/grading_dashboard_daily_timeline.py tests/test_grading_dashboard_daily_timeline.py` passed
+    - `pytest tests/test_grading_dashboard_daily_timeline.py -q` passed (`17 passed`)
+    - `pytest tests/test_grading_dashboard_scaffold.py tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_dashboard_daily_timeline.py -q` passed (`71 passed`)
+- Milestone 2 Phase 7 Stream B execution completed (`2026-03-17`) and tasks moved to `IN REVIEW`:
+  - Stream B task outcomes:
+    - `P2.7.9`: `app/services/grading_dashboard_correlations.py` now returns the full Correlations heatmap surface with all `5 x 3` dimension/bucket cells zero-filled plus the documented sequential failure funnel (`total -> loop_detected -> frustration >= 7 -> unresolved -> failure escalation`).
+    - `P2.7.10`: the same service now adds fixed frustration histogram buckets and exactly four derived story cards sorted by severity first, then by the documented fallback priority.
+    - `P2.7.11`: `tests/test_grading_dashboard_correlations.py` now covers empty-window zero fill, populated heatmap cells, sequential funnel monotonicity, histogram bucket coverage, and story-card ordering/fallback behavior.
+  - Stream B validation status:
+    - `python -m compileall -f app/services/grading_dashboard_correlations.py tests/test_grading_dashboard_correlations.py` passed
+    - `pytest tests/test_grading_dashboard_correlations.py -q` passed (`5 passed`)
+  - Kanban note:
+    - no Phase 7 Stream B issues were created because stream-level Kanban creation remains deferred unless explicitly requested.
+- Milestone 2 Phase 7 Stream A execution completed (`2026-03-17`) and docs were synchronized for review:
+  - Stream A task outcomes:
+    - `P2.7.6`: `app/services/grading_dashboard_agent_pulse.py` now returns the bounded Agent Pulse summary aggregates, including overall composite, AI-dimension averages, health chips, escalation breakdown, and user-signal cards.
+    - `P2.7.7`: `app/services/grading_dashboard_agent_pulse.py` now adds zero-filled daily trend points, canonical top-intent tags capped to the documented six-row slice, latest-successful freshness metadata, and deterministic attention signals with stable priority ordering.
+    - `P2.7.8`: `tests/test_grading_dashboard_agent_pulse.py` now covers populated and empty windows, trend zero-fill, top-intent ordering/limit behavior, freshness fallback, and attention-signal ordering.
+  - Stream A validation status:
+    - `pytest tests/test_grading_dashboard_agent_pulse.py -q` passed (`4 passed`)
+    - `C:\Users\Public\anaconda3\python.exe -m compileall app/services/grading_dashboard_agent_pulse.py tests/test_grading_dashboard_agent_pulse.py` passed
+  - Kanban note:
+    - no Phase 7 Stream A issues were created because stream-level Kanban creation remains deferred unless explicitly requested.
+- Milestone 2 Phase 7 Gate 7.0 rereview completed (`2026-03-17`) and tasks moved to `DONE`:
+  - Approved and moved to `DONE`:
+    - `P2.7.3` (`EDA-171`)
+    - `P2.7.4` (`EDA-173`)
+    - `P2.7.5` (`EDA-172`)
+  - Rereview outcomes:
+    - dashboard settings now hard-cap window and worst-performer maxima at the documented `31`-day / `50`-row Phase 7 contract.
+    - dashboard query schemas now inherit those corrected bounds from the shared settings contract.
+    - service scaffolds remain importable, non-circular, and correctly fail closed via `NotImplementedError` until Streams A-C land real implementations.
+  - Rereview validation status:
+    - `python -m compileall app/core/config.py tests/test_grading_config.py app/schemas/grading_dashboard_common.py app/schemas/grading_dashboard_agent_pulse.py app/schemas/grading_dashboard_correlations.py app/schemas/grading_dashboard_daily_timeline.py tests/test_grading_schemas.py app/services/grading_dashboard_agent_pulse.py app/services/grading_dashboard_correlations.py app/services/grading_dashboard_daily_timeline.py tests/test_grading_dashboard_scaffold.py` passed
+    - `pytest tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_dashboard_scaffold.py -q` passed (`54 passed`)
+  - Gate 7.0 is now fully approved and Streams A-C are clear to start in parallel.
+- Milestone 2 Phase 7 Gate 7.0 review-fix pass completed (`2026-03-17`) and tasks remain in `IN REVIEW`:
+  - `P2.7.3` (`EDA-171`): `app/core/config.py` now rejects dashboard window settings above `31` days and dashboard worst-performer limits above `50`, so runtime settings can no longer widen the documented Phase 7 contract beyond the intended bounds.
+  - `P2.7.4` (`EDA-173`): no schema code changes were required in the review-fix pass because the schema review note was entirely blocked on the upstream config contract; the dashboard schema surface is ready for re-review against the fixed bounds.
+  - `P2.7.5` (`EDA-172`): no service scaffold code changes were required in the review-fix pass because the scaffold review note was entirely blocked on the upstream config contract; the per-view service boundaries are ready for re-review against the fixed bounds.
+  - Review-fix validation status:
+    - `python -m compileall app/core/config.py tests/test_grading_config.py app/schemas/grading_dashboard_common.py app/schemas/grading_dashboard_agent_pulse.py app/schemas/grading_dashboard_correlations.py app/schemas/grading_dashboard_daily_timeline.py tests/test_grading_schemas.py app/services/grading_dashboard_agent_pulse.py app/services/grading_dashboard_correlations.py app/services/grading_dashboard_daily_timeline.py tests/test_grading_dashboard_scaffold.py` passed
+    - `pytest tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_dashboard_scaffold.py -q` passed (`54 passed`)
+- Milestone 2 Phase 7 Gate 7.0 review progressed (`2026-03-17`):
+  - Approved and moved to `DONE`:
+    - `P2.7.1` (`EDA-169`)
+  - Returned for fixes and kept in `IN REVIEW`:
+    - `P2.7.3` (`EDA-171`)
+  - Kept in `IN REVIEW` pending the upstream config fix:
+    - `P2.7.4` (`EDA-173`)
+    - `P2.7.5` (`EDA-172`)
+  - Review findings:
+    - `app/core/config.py` currently accepts `dashboard_max_window_days=366` and `dashboard_max_worst_performers_limit=500`, so the Phase 7 config contract does not fail fast at the documented `31`-day / `50`-row bounds.
+    - `GradingDashboardWindowQuery` and `GradingDashboardDailyTimelineQuery` inherit those widened settings at validation time, so the schema and scaffold tasks remain blocked until the config bounds are fixed and regression-tested.
+  - Review validation status:
+    - `python -m compileall app/core/constants.py app/core/config.py app/core/__init__.py app/schemas/grading_dashboard_common.py app/schemas/grading_dashboard_agent_pulse.py app/schemas/grading_dashboard_correlations.py app/schemas/grading_dashboard_daily_timeline.py app/schemas/__init__.py app/services/grading_dashboard_agent_pulse.py app/services/grading_dashboard_correlations.py app/services/grading_dashboard_daily_timeline.py app/services/__init__.py tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_dashboard_scaffold.py` passed
+    - `pytest tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_dashboard_scaffold.py -q` passed (`52 passed`)
+- Milestone 2 Phase 7 Gate 7.0 execution completed (`2026-03-17`) and Kanban/tasks were synchronized:
+  - Created Phase 7 Gate 7.0 Kanban issues on project `aiva-dashboard-be`:
+    - `P2.7.1` (`EDA-169`)
+    - `P2.7.2` (`EDA-170`)
+    - `P2.7.3` (`EDA-171`)
+    - `P2.7.4` (`EDA-173`)
+    - `P2.7.5` (`EDA-172`)
+  - Gate task outcomes:
+    - `P2.7.1` (`EDA-169`) already satisfied the acceptance criteria via the existing Phase 7 planning docs and was reconciled to `IN REVIEW`.
+    - `P2.7.2` (`EDA-170`) validated the dashboard read path and recorded a no-migration decision; the task moved to `DONE`.
+    - `P2.7.3` (`EDA-171`) added dashboard defaults/registries in `app/core/constants.py`, `app/core/config.py`, `app/core/__init__.py`, `.env.example`, and `tests/test_grading_config.py`; the task moved to `IN REVIEW`.
+    - `P2.7.4` (`EDA-173`) added shared/common plus per-view dashboard schema modules in `app/schemas/*` and expanded `tests/test_grading_schemas.py`; the task moved to `IN REVIEW`.
+    - `P2.7.5` (`EDA-172`) added per-view dashboard service scaffolds in `app/services/*`, exported them through `app/services/__init__.py`, and added `tests/test_grading_dashboard_scaffold.py`; the task moved to `IN REVIEW`.
+  - Gate 7.0 validation status:
+    - `python -m compileall app/core/constants.py app/core/config.py app/core/__init__.py app/schemas/grading_dashboard_common.py app/schemas/grading_dashboard_agent_pulse.py app/schemas/grading_dashboard_correlations.py app/schemas/grading_dashboard_daily_timeline.py app/schemas/__init__.py app/services/grading_dashboard_agent_pulse.py app/services/grading_dashboard_correlations.py app/services/grading_dashboard_daily_timeline.py app/services/__init__.py tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_dashboard_scaffold.py` passed
+    - `pytest tests/test_grading_config.py tests/test_grading_schemas.py tests/test_grading_dashboard_scaffold.py -q` passed (`52 passed`)
+  - Gate 7.0 established the config/schema/service boundaries for Streams A-C, but the later review pass returned `P2.7.3` for a config-bound fix and held `P2.7.4`/`P2.7.5` pending that correction.
+- Milestone 2 Phase 7 detailed plan created (`2026-03-17`):
+  - added `docs/milestone-2/m2-phase-7.md` with Gate 7.0 plus Streams A-D for Agent Pulse, Correlations, Daily Timeline, and dashboard API/validation/docs handoff
+  - updated `docs/milestone-2/milestone-2.md` and `docs/milestone-2/milestone-notes.md` so dashboard endpoints are now Phase 7 and milestone-wide QA/hardening is now Phase 8
+  - synchronized `docs/tasks.md` with `P2.7.1` through `P2.7.18`
+  - initial planning snapshot kept Kanban task creation deferred until explicitly requested; Gate 7.0 issues were created later the same day for execution
+- Milestone 2 Phase 6 is complete; the next implementation phase is the Phase 7 dashboard API, and Phase 8 is now reserved for milestone-wide QA/hardening.
 - Milestone 2 Phase 6 Stream D rereview completed (`2026-03-17`) and tasks moved to `DONE`:
   - Approved and moved to `DONE`:
     - `P2.6.15` (`EDA-165`)
@@ -20,7 +161,6 @@
     - `python -m compileall app/main.py app/api/routes/grading_monitoring.py tests/test_grading_monitoring_api.py` passed
     - `pytest tests/test_grading_monitoring_api.py -q` passed (`12 passed`)
     - `pytest tests/test_monitoring_highlights.py tests/test_grading_monitoring.py tests/test_grading_monitoring_detail.py tests/test_grading_monitoring_api.py -q` passed (`34 passed`)
-- Milestone 2 Phase 6 is now complete and ready for Phase 7 QA/hardening planning.
 - Milestone 2 Phase 6 Stream D review-fix pass completed (`2026-03-17`) and tasks remain in `IN REVIEW`:
   - `P2.6.15` (`EDA-165`): `app/main.py` now normalizes monitoring `RequestValidationError` / Pydantic validation failures for `/api/v1/monitoring/conversations*`, so malformed date, numeric, and UUID inputs no longer leak the generic FastAPI `detail=[...]` payload.
   - `P2.6.16` (`EDA-166`): `tests/test_grading_monitoring_api.py` now covers malformed `start_date`, malformed `frustration_min`, and malformed `grade_id` parsing alongside the existing list/detail/auth/filter contract cases.
@@ -34,7 +174,7 @@
   - `P2.6.15` (`EDA-165`): added protected `/api/v1/monitoring/conversations` list/detail routes in `app/api/routes/grading_monitoring.py`, registered them through `app/api/routes/__init__.py` and `app/api/router.py`, and mapped the modeled monitoring validation/not-found paths to stable error envelopes without altering legacy `/api/v1/conversations/*` semantics.
   - `P2.6.16` (`EDA-166`): added `tests/test_grading_monitoring_api.py` coverage for list auth, allowed-role empty states with freshness metadata, filtered/sorted populated list payloads, detail payload shape, invalid monitoring windows/filters/sorts, and stable grade-not-found responses before the malformed-input review fix expanded that surface.
   - `P2.6.17` (`EDA-167`): verification-only task captured a clean compile plus targeted monitoring pytest evidence for highlights, list/detail services, and the new API routes.
-  - `P2.6.18` (`EDA-168`): synchronized `docs/tasks.md`, `docs/project-progress.md`, and `docs/milestone-2/m2-phase-6.md` with Stream D execution state and the Phase 7 handoff note.
+  - `P2.6.18` (`EDA-168`): synchronized `docs/tasks.md`, `docs/project-progress.md`, and `docs/milestone-2/m2-phase-6.md` with Stream D execution state and the downstream handoff note.
   - Stream D validation status:
     - `python -m compileall app tests` passed
     - OpenAPI smoke exposed `/api/v1/monitoring/conversations` and `/api/v1/monitoring/conversations/{grade_id}`
@@ -164,7 +304,7 @@
   - Review validation status:
     - `python -m compileall app/api/routes/grading_metrics.py app/api/routes/__init__.py app/api/router.py app/services/__init__.py tests/test_grading_metrics_api.py` passed
     - unrestricted `pytest tests/test_grading_metrics_api.py -q` passed (`19 passed`)
-  - Phase 5 is now complete. Phase 6 (monitoring highlights) and Phase 7 (full QA) are next.
+  - Phase 5 is now complete. Phase 6 (monitoring highlights) is next, and the later post-metrics phases are now dashboard endpoints (Phase 7) followed by milestone-wide QA/hardening (Phase 8).
 - Milestone 2 Phase 5 Stream B review completed (`2026-03-13`) and tasks moved to `DONE`:
   - Approved and moved to `DONE`:
     - `P2.5.9` (`EDA-141`)
@@ -797,7 +937,7 @@
       - pre/post source table counts unchanged (`Arabia Insurance Chats=9090`, `usage_notifications=0`)
 
 ## Next Recommended Action
-- Begin Phase 7 end-to-end QA/hardening across the new monitoring routes, Phase 5 metrics routes, and the preserved legacy `/api/v1/conversations/{conversation_key}/messages` surface.
+- Complete `EDA-180` (P2.7.18 docs) rereview to close Phase 7 Stream D, then begin Phase 8 milestone-wide QA/hardening.
 
 ## Notes
 - Kanban MCP is reachable and synchronized with current execution state.

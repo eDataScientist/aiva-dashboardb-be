@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import Date, String, case, cast, func, select
+from sqlalchemy import Date, Integer, String, case, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
 
@@ -85,8 +85,16 @@ def canonical_identity_type_expr():
     )
 
 
-def gst_grade_date_expr():
-    return cast(func.timezone(REPORTING_TIMEZONE, ChatMessage.created_at), Date)
+def gst_timestamp_expr(column: Any = ChatMessage.created_at):
+    return func.timezone(REPORTING_TIMEZONE, column)
+
+
+def gst_grade_date_expr(column: Any = ChatMessage.created_at):
+    return cast(gst_timestamp_expr(column), Date)
+
+
+def gst_grade_hour_expr(column: Any = ChatMessage.created_at):
+    return cast(func.extract("HOUR", gst_timestamp_expr(column)), Integer)
 
 
 def build_customer_day_candidates_stmt(

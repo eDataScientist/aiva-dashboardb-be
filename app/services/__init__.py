@@ -33,6 +33,18 @@ from app.services.grading_batch import (
     prepare_manual_grading_run,
     run_grading_batch_in_background,
 )
+from app.services.grading_dashboard_agent_pulse import (
+    build_grading_dashboard_agent_pulse_stmt,
+    get_grading_dashboard_agent_pulse,
+)
+from app.services.grading_dashboard_correlations import (
+    build_grading_dashboard_correlations_stmt,
+    get_grading_dashboard_correlations,
+)
+from app.services.grading_dashboard_daily_timeline import (
+    build_grading_dashboard_daily_timeline_stmt,
+    get_grading_dashboard_daily_timeline,
+)
 from app.services.grading_parser import (
     GradingParseFailure,
     ParsedGradingResult,
@@ -200,6 +212,9 @@ __all__ = [
     "build_grading_pipeline_dependencies",
     "build_grading_run_runtime_snapshot",
     "build_grading_metrics_base_stmt",
+    "build_grading_dashboard_agent_pulse_stmt",
+    "build_grading_dashboard_correlations_stmt",
+    "build_grading_dashboard_daily_timeline_stmt",
     "build_customer_day_messages_stmt",
     "build_intent_distribution_grades_stmt",
     "build_intent_trend_grades_stmt",
@@ -240,6 +255,9 @@ __all__ = [
     "ensure_grading_run_access",
     "execute_prepared_grading_run",
     "grade_customer_day",
+    "get_grading_dashboard_agent_pulse",
+    "get_grading_dashboard_correlations",
+    "get_grading_dashboard_daily_timeline",
     "get_grading_run_history_detail",
     "gst_grade_date_expr",
     "list_grading_run_history",

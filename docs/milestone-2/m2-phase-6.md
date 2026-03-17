@@ -5,7 +5,7 @@
 - Surface server-side filtering, sorting, paging, and highlight badges for problematic graded conversations without mutating raw chat data.
 - Add a customer-day detail response that combines the full grade panel, same-day transcript, and recent grade history timeline for the same canonical identity.
 - Preserve a separate full-conversation view across time by linking Phase 6 monitoring payloads to the existing `/api/v1/conversations/{conversation_key}/messages` surface.
-- Leave Phase 6 in a reviewable state with deterministic service and API tests plus a clean handoff into Phase 7 QA/hardening.
+- Leave Phase 6 in a reviewable state with deterministic service and API tests plus a clean handoff into the new Phase 7 dashboard API and Phase 8 milestone-wide hardening.
 
 ## Planning Analysis (Required Order)
 
@@ -101,7 +101,7 @@
 ## Dependencies
 - Phase dependency: `Milestone 2 Phase 5 complete -> Milestone 2 Phase 6`
 - Downstream impact:
-  - Phase 7 QA should validate the new monitoring surface alongside Phase 5 metrics and the preserved legacy/full-conversation routes.
+  - Phase 7 dashboard work should reuse the monitoring surface alongside Phase 5 metrics, and Phase 8 QA should validate those routes together with the preserved legacy/full-conversation surface.
   - Monitoring should consume the same canonical metric keys, intent metadata, and freshness semantics already stabilized in Phase 5.
 
 ## Phase 6 Contract Outline (Planning Baseline)
@@ -277,14 +277,14 @@
 - [ ] Detail includes `conversation_key` so clients can pivot to the preserved full-conversation endpoint.
 - [ ] Stream C tests cover populated, empty-history, and not-found paths.
 
-## Stream D - API, Validation, and Phase 7 Handoff
+## Stream D - API, Validation, and Downstream Handoff
 
 | Task ID | Title | Goal / Acceptance Criteria | Dependencies | Files to Modify/Create (Expected) | Testing / Validation |
 |---|---|---|---|---|---|
 | D.1 | `P2.6.15 - API - Add protected monitoring list and detail endpoints - Stream D (Dependent)` | Implement `/api/v1/monitoring/conversations` list/detail routes and register the new router cleanly. | `P2.6.8`, `P2.6.11`, `P2.6.14` | `app/api/routes/grading_monitoring.py` (new), `app/api/routes/__init__.py`, `app/api/router.py` | Route import/OpenAPI smoke checks and direct handler validation. |
 | D.2 | `P2.6.16 - Test - Add monitoring API tests for auth, filters, sort, detail, and error contracts - Stream D (Dependent)` | Cover auth behavior, invalid windows/filters/sorts, empty states, populated list/detail payloads, and stable not-found errors. | `P2.6.15` | `tests/test_grading_monitoring_api.py` (new), `tests/conftest.py` (fixture extensions if needed) | `pytest tests/test_grading_monitoring_api.py -q`. |
 | D.3 | `P2.6.17 - QA - Run compile and targeted pytest verification for monitoring scope - Stream D (Dependent)` | Execute compile and focused pytest verification for highlight, monitoring service, route, and preserved-conversation-link contracts. | `P2.6.16` | No mandatory code files; QA notes in task records | `python -m compileall app tests` and targeted monitoring pytest suites. |
-| D.4 | `P2.6.18 - Docs - Update task/progress docs with Phase 6 execution notes and Phase 7 handoff risks - Stream D (Dependent)` | Sync docs after execution/review and capture any remaining monitoring/runtime risks for the final QA phase. | `P2.6.17` | `docs/tasks.md`, `docs/project-progress.md`, `docs/milestone-2/m2-phase-6.md` | Documentation review for status consistency and handoff readiness. |
+| D.4 | `P2.6.18 - Docs - Update task/progress docs with Phase 6 execution notes and Phase 7 handoff risks - Stream D (Dependent)` | Sync docs after execution/review and capture any remaining monitoring/runtime risks for the downstream dashboard and final hardening phases. | `P2.6.17` | `docs/tasks.md`, `docs/project-progress.md`, `docs/milestone-2/m2-phase-6.md` | Documentation review for status consistency and handoff readiness. |
 
 ### Stream D Execution Snapshot (`2026-03-17`)
 - `P2.6.15` (`EDA-165`) added `app/api/routes/grading_monitoring.py`, registered the new router through `app/api/routes/__init__.py` and `app/api/router.py`, and exposed stable monitoring validation/not-found envelopes without mutating legacy conversation-route semantics.
@@ -293,7 +293,7 @@
   - `python -m compileall app tests` passed
   - `pytest tests/test_monitoring_highlights.py tests/test_grading_monitoring.py tests/test_grading_monitoring_detail.py tests/test_grading_monitoring_api.py -q` passed (`31 passed`)
   - only third-party Paramiko deprecation warnings were emitted by the test environment
-- `P2.6.18` (`EDA-168`) synchronized `docs/tasks.md`, `docs/project-progress.md`, and this phase plan with the Stream D execution state and Phase 7 handoff note.
+- `P2.6.18` (`EDA-168`) synchronized `docs/tasks.md`, `docs/project-progress.md`, and this phase plan with the Stream D execution state and downstream handoff note.
 
 ### Stream D Review-Fix Snapshot (`2026-03-17`)
 - `P2.6.15` (`EDA-165`) extended `app/main.py` so monitoring `RequestValidationError` / Pydantic validation failures are classified into the monitoring error envelope as well:
@@ -311,14 +311,14 @@
 - `P2.6.15` (`EDA-165`) approved after rereview confirmed the monitoring routes preserve legacy conversation semantics while normalizing malformed monitoring query/path inputs into the documented envelope.
 - `P2.6.16` (`EDA-166`) approved after the API suite expanded to cover malformed `start_date`, malformed `frustration_min`, and malformed `grade_id` parsing in addition to the previously covered monitoring route contract cases.
 - `P2.6.17` (`EDA-167`) approved after unrestricted rerun of the full monitoring verification bundle passed with `34 passed`.
-- `P2.6.18` (`EDA-168`) approved after the docs were synchronized with the review-fix outcome and the Phase 7 QA handoff state.
-- Phase 6 is complete; the next step is Phase 7 end-to-end QA/hardening across monitoring, graded metrics, and the preserved legacy full-conversation route.
+- `P2.6.18` (`EDA-168`) approved after the docs were synchronized with the review-fix outcome and the downstream handoff state.
+- Phase 6 is complete; the next step is Phase 7 dashboard endpoint work that reuses monitoring, followed by Phase 8 end-to-end QA/hardening across monitoring, graded metrics, dashboard routes, and the preserved legacy full-conversation route.
 
 ### Stream D Acceptance Criteria
 - [x] Monitoring routes are protected and registered without altering legacy conversation-route semantics.
 - [x] API tests cover auth, validation, empty-state, populated-state, and not-found contracts.
 - [x] Compile and targeted pytest verification are executed or blockers are explicitly documented.
-- [x] Docs remain synchronized with Phase 6 execution and Phase 7 handoff state.
+- [x] Docs remain synchronized with Phase 6 execution and downstream handoff state.
 
 ## Suggested Files by Concern
 - Config and constants:
@@ -355,7 +355,7 @@
 - Stream A should land first because both the list and detail experiences depend on one shared highlight evaluator.
 - Stream B and Stream C can run in parallel after Stream A because list and detail operate on separate service paths once highlight evaluation is available.
 - Stream D depends on B/C so the route layer exposes real list/detail monitoring behavior instead of placeholders.
-- Phase 7 should validate both the new monitoring surface and the preserved legacy/full-conversation contracts together.
+- Phase 7 dashboard routes should reuse the new monitoring surface, and Phase 8 should validate both the monitoring and preserved legacy/full-conversation contracts together.
 
 ## Parallelization Map
 

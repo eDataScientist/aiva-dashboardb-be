@@ -40,6 +40,10 @@ GRADING_RUN_ITEM_FAILURE_STATUSES: Final[frozenset[str]] = frozenset(
 GRADING_DEFAULT_MODEL: Final[str] = "mock-grade-v1"
 GRADING_DEFAULT_PROMPT_VERSION: Final[str] = "v1"
 GRADING_METRICS_DEFAULT_WINDOW_DAYS: Final[int] = 30
+DASHBOARD_DEFAULT_WINDOW_DAYS: Final[int] = 7
+DASHBOARD_MAX_WINDOW_DAYS: Final[int] = 31
+DASHBOARD_DEFAULT_WORST_PERFORMERS_LIMIT: Final[int] = 10
+DASHBOARD_MAX_WORST_PERFORMERS_LIMIT: Final[int] = 50
 MONITORING_DEFAULT_WINDOW_DAYS: Final[int] = 1
 MONITORING_DEFAULT_PAGE_SIZE: Final[int] = 50
 MONITORING_DEFAULT_RECENT_HISTORY_LIMIT: Final[int] = 30
@@ -48,6 +52,29 @@ MONITORING_ALLOWED_SORT_FIELDS: Final[tuple[str, ...]] = (
     "accuracy_score",
 )
 MONITORING_ALLOWED_SORT_DIRECTIONS: Final[tuple[str, ...]] = ("asc", "desc")
+DASHBOARD_HEATMAP_SCORE_BUCKETS: Final[tuple[tuple[str, int, int], ...]] = (
+    ("1-4", 1, 4),
+    ("5-7", 5, 7),
+    ("8-10", 8, 10),
+)
+DASHBOARD_FRUSTRATION_HISTOGRAM_BUCKETS: Final[tuple[tuple[str, int, int], ...]] = (
+    ("1-2", 1, 2),
+    ("3-4", 3, 4),
+    ("5-6", 5, 6),
+    ("7-8", 7, 8),
+    ("9-10", 9, 10),
+)
+DASHBOARD_ATTENTION_SIGNAL_THRESHOLDS: Final[dict[str, float]] = {
+    "failure_escalation_rate_pct": 10.0,
+    "dimension_average_low": 7.5,
+}
+DASHBOARD_STORY_CARD_SEVERITY_THRESHOLDS: Final[
+    tuple[tuple[str, float], ...]
+] = (
+    ("critical", 10.0),
+    ("warning", 5.0),
+    ("info", 0.0),
+)
 GRADING_PROMPT_PACK_BASE_DIR: Final[str] = "app/prompt_assets/grading"
 GRADING_PROMPT_SYSTEM_PROMPT_FILE: Final[str] = "system_prompt.md"
 GRADING_PROMPT_DOMAIN_ORDER: Final[tuple[str, ...]] = (

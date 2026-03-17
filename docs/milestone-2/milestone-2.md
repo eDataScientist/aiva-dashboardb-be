@@ -89,11 +89,20 @@ Subtasks (brief):
 - Preserve a separate full conversation view endpoint surface (across time).
 - Compute highlights on read in the service layer using configurable rules.
 
-## Phase 7 - Testing, QA, and Hardening
+## Phase 7 - AI Agent Performance Dashboard API
+Objective: Deliver dedicated backend endpoints for the AI Agent Performance Dashboard views described in `docs/dashboard_spec.md`.
+
+Subtasks (brief):
+- Add additive dashboard endpoints for the Agent Pulse, Correlations, and Daily Timeline views.
+- Compose stable view payloads from `conversation_grades`, `grading_runs`, and same-day raw-chat timestamps where needed.
+- Reuse Phase 5 metrics and Phase 6 monitoring semantics without mutating their existing route contracts.
+- Leave the dashboard API in a reviewable state with deterministic tests and a clean handoff into milestone-wide hardening.
+
+## Phase 8 - Testing, QA, and Hardening
 Objective: Validate Milestone 2 end-to-end and leave the project in a stable, reviewable state.
 
 Subtasks (brief):
-- Add/expand tests for auth, profiles, grading, metrics, and monitoring endpoints.
+- Add/expand tests for auth, profiles, grading, metrics, monitoring, and dashboard endpoints.
 - Add fixture-based parser validation and integration coverage.
 - Run milestone QA verification (migrations, runtime checks, API behavior).
 - Finalize handoff-ready documentation and checklist status.
@@ -104,7 +113,8 @@ Subtasks (brief):
 - `Phase 4` depends on `Phase 3.5`
 - `Phase 5` depends on `Phase 3` (and may consume execution outputs standardized in `Phase 4`)
 - `Phase 6` depends on `Phase 2` and `Phase 3`
-- `Phase 7` closes the milestone after implementation phases complete
+- `Phase 7` depends on `Phase 5` and `Phase 6` (and reuses Phase 4 freshness semantics)
+- `Phase 8` closes the milestone after implementation phases complete
 
 Exact gate/stream parallelism will be defined in each phase document.
 
@@ -115,6 +125,7 @@ Exact gate/stream parallelism will be defined in each phase document.
 - Versioned grading prompt pack aligned to the legacy markdown prompt workflow
 - AI Quality Metrics API endpoints (graded-data based)
 - Customer-day conversations monitoring API endpoints
+- AI Agent Performance Dashboard API endpoints (Agent Pulse, Correlations, Daily Timeline)
 - Expanded automated test coverage for new milestone features
 
 ## Success Criteria
@@ -123,5 +134,6 @@ Exact gate/stream parallelism will be defined in each phase document.
 - Grading pipeline persists valid customer-day grades with intent classification.
 - Batch runs can be triggered and tracked safely (including repeat-run protections).
 - AI Quality Metrics and monitoring endpoints return stable, documented, filterable responses.
+- Dashboard endpoints return stable view payloads for Agent Pulse, Correlations, and Daily Timeline consumers.
 - Highlights are computed consistently on read using configurable rules.
 - Milestone 2 test and QA checks pass for modified areas.

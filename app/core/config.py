@@ -8,6 +8,10 @@ from pydantic import Field, ValidationError, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.constants import (
+    DASHBOARD_DEFAULT_WINDOW_DAYS,
+    DASHBOARD_DEFAULT_WORST_PERFORMERS_LIMIT,
+    DASHBOARD_MAX_WINDOW_DAYS,
+    DASHBOARD_MAX_WORST_PERFORMERS_LIMIT,
     GRADING_BATCH_TIMEZONE,
     GRADING_DEFAULT_MODEL,
     GRADING_METRICS_DEFAULT_WINDOW_DAYS,
@@ -135,6 +139,22 @@ class Settings(BaseSettings):
     grading_metrics_max_window_days: int = Field(
         default=366,
         description="Maximum inclusive graded-metrics date window in GST days.",
+    )
+    dashboard_default_window_days: int = Field(
+        default=DASHBOARD_DEFAULT_WINDOW_DAYS,
+        description="Default inclusive dashboard date window in GST days.",
+    )
+    dashboard_max_window_days: int = Field(
+        default=DASHBOARD_MAX_WINDOW_DAYS,
+        description="Maximum inclusive dashboard date window in GST days.",
+    )
+    dashboard_default_worst_performers_limit: int = Field(
+        default=DASHBOARD_DEFAULT_WORST_PERFORMERS_LIMIT,
+        description="Default number of worst-performer rows returned by Daily Timeline.",
+    )
+    dashboard_max_worst_performers_limit: int = Field(
+        default=DASHBOARD_MAX_WORST_PERFORMERS_LIMIT,
+        description="Maximum number of worst-performer rows returned by Daily Timeline.",
     )
     monitoring_default_window_days: int = Field(
         default=MONITORING_DEFAULT_WINDOW_DAYS,
@@ -292,6 +312,8 @@ class Settings(BaseSettings):
     @field_validator(
         "grading_metrics_default_window_days",
         "grading_metrics_max_window_days",
+        "dashboard_default_window_days",
+        "dashboard_max_window_days",
         "monitoring_default_window_days",
         "monitoring_max_window_days",
     )
@@ -299,6 +321,14 @@ class Settings(BaseSettings):
     def validate_window_day_settings(cls, value: int, info) -> int:
         if value <= 0:
             raise ValueError(f"{info.field_name.upper()} must be greater than 0.")
+        if (
+            info.field_name in {"dashboard_default_window_days", "dashboard_max_window_days"}
+            and value > DASHBOARD_MAX_WINDOW_DAYS
+        ):
+            raise ValueError(
+                f"{info.field_name.upper()} must be less than or equal to "
+                f"{DASHBOARD_MAX_WINDOW_DAYS}."
+            )
         if value > 366:
             raise ValueError(
                 f"{info.field_name.upper()} must be less than or equal to 366."
@@ -306,6 +336,8 @@ class Settings(BaseSettings):
         return value
 
     @field_validator(
+        "dashboard_default_worst_performers_limit",
+        "dashboard_max_worst_performers_limit",
         "monitoring_default_page_size",
         "monitoring_max_page_size",
         "monitoring_default_recent_history_limit",
@@ -314,6 +346,17 @@ class Settings(BaseSettings):
     def validate_monitoring_page_and_history_settings(cls, value: int, info) -> int:
         if value <= 0:
             raise ValueError(f"{info.field_name.upper()} must be greater than 0.")
+        if (
+            info.field_name in {
+                "dashboard_default_worst_performers_limit",
+                "dashboard_max_worst_performers_limit",
+            }
+            and value > DASHBOARD_MAX_WORST_PERFORMERS_LIMIT
+        ):
+            raise ValueError(
+                f"{info.field_name.upper()} must be less than or equal to "
+                f"{DASHBOARD_MAX_WORST_PERFORMERS_LIMIT}."
+            )
         if value > 500:
             raise ValueError(
                 f"{info.field_name.upper()} must be less than or equal to 500."
@@ -356,6 +399,19 @@ class Settings(BaseSettings):
                 "GRADING_METRICS_DEFAULT_WINDOW_DAYS must be less than or equal to "
                 "GRADING_METRICS_MAX_WINDOW_DAYS."
             )
+        if self.dashboard_default_window_days > self.dashboard_max_window_days:
+            raise ValueError(
+                "DASHBOARD_DEFAULT_WINDOW_DAYS must be less than or equal to "
+                "DASHBOARD_MAX_WINDOW_DAYS."
+            )
+        if (
+            self.dashboard_default_worst_performers_limit
+            > self.dashboard_max_worst_performers_limit
+        ):
+            raise ValueError(
+                "DASHBOARD_DEFAULT_WORST_PERFORMERS_LIMIT must be less than or equal "
+                "to DASHBOARD_MAX_WORST_PERFORMERS_LIMIT."
+            )
         if self.monitoring_default_window_days > self.monitoring_max_window_days:
             raise ValueError(
                 "MONITORING_DEFAULT_WINDOW_DAYS must be less than or equal to "
@@ -394,8 +450,8 @@ def get_settings() -> Settings:
     except ValidationError as exc:
         raise RuntimeError(
             "Invalid application settings. Ensure DATABASE_URL, AUTH_JWT_SECRET, "
-            "AUTH_JWT_ALGORITHM, AUTH_ACCESS_TOKEN_EXPIRE_MINUTES, and GRADING_* "
-            "settings are valid."
+            "AUTH_JWT_ALGORITHM, AUTH_ACCESS_TOKEN_EXPIRE_MINUTES, and GRADING_*, "
+            "DASHBOARD_*, and MONITORING_* settings are valid."
         ) from exc
 
 

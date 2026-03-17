@@ -4,6 +4,20 @@ import pytest
 from pydantic import ValidationError
 
 from app.schemas.grading import GradingOutput, GradingParseError
+from app.schemas.grading_dashboard_agent_pulse import (
+    GradingDashboardAgentPulseResponse,
+)
+from app.schemas.grading_dashboard_common import (
+    GradingDashboardDailyTimelineQuery,
+    GradingDashboardErrorResponse,
+    GradingDashboardWindowQuery,
+)
+from app.schemas.grading_dashboard_correlations import (
+    GradingDashboardCorrelationsResponse,
+)
+from app.schemas.grading_dashboard_daily_timeline import (
+    GradingDashboardDailyTimelineResponse,
+)
 from app.schemas.grading_metrics import (
     GradingIntentDistributionItem,
     GradingMetricsErrorResponse,
@@ -500,3 +514,195 @@ def test_monitoring_error_response_rejects_blank_detail_items() -> None:
             message="Sort is invalid.",
             details=["   "],
         )
+
+
+def test_grading_dashboard_window_query_defaults_to_previous_gst_window() -> None:
+    query = GradingDashboardWindowQuery()
+
+    assert query.start_date is not None
+    assert query.end_date is not None
+    assert (query.end_date - query.start_date).days == 6
+
+
+def test_grading_dashboard_daily_timeline_query_defaults_to_previous_gst_day_and_limit() -> None:
+    query = GradingDashboardDailyTimelineQuery()
+
+    assert query.target_date is not None
+    assert query.worst_performers_limit == 10
+
+
+def test_grading_dashboard_error_response_rejects_blank_detail_items() -> None:
+    with pytest.raises(ValidationError):
+        GradingDashboardErrorResponse(
+            code="invalid_date_window",
+            message="Dashboard request is invalid.",
+            details=["   "],
+        )
+
+
+def test_grading_dashboard_agent_pulse_response_accepts_canonical_payload() -> None:
+    response = GradingDashboardAgentPulseResponse(
+        date_window={"start_date": "2026-03-05", "end_date": "2026-03-11"},
+        total_graded_customer_days=12,
+        overall_composite_score=8.1,
+        dimension_averages={
+            "relevancy": 8.2,
+            "accuracy": 7.9,
+            "completeness": 8.0,
+            "clarity": 8.3,
+            "tone": 8.4,
+        },
+        health={
+            "resolution_rate_pct": 83.3,
+            "avg_repetition_score": 7.2,
+            "loop_detected_rate_pct": 8.3,
+        },
+        escalation_breakdown=[
+            {"escalation_type": "Natural", "count": 1, "share_pct": 8.3},
+            {"escalation_type": "Failure", "count": 1, "share_pct": 8.3},
+            {"escalation_type": "None", "count": 10, "share_pct": 83.4},
+        ],
+        user_signals={
+            "avg_satisfaction_score": 7.8,
+            "avg_frustration_score": 2.2,
+            "user_relevancy_rate_pct": 91.7,
+        },
+        trend_points=[
+            {
+                "date": "2026-03-11",
+                "overall_composite_score": 8.0,
+                "satisfaction_score": 7.9,
+                "frustration_score": 2.1,
+            }
+        ],
+        top_intents=[
+            {
+                "intent_code": "policy_inquiry",
+                "intent_label": "Policy Inquiry",
+                "intent_category": "Policy Related",
+                "count": 5,
+            }
+        ],
+        attention_signals=[
+            {
+                "code": "failure_escalation_rate_pct",
+                "severity": "warning",
+                "label": "Failure escalations rising",
+                "metric_key": "escalation_failure_rate_pct",
+                "value": 8.3,
+                "message": "Failure escalations are above the early-warning threshold.",
+            }
+        ],
+        freshness={
+            "latest_successful_run_id": "df35ea32-c0b2-46e4-954e-7707b9d3a62b",
+            "latest_successful_window_end_date": "2026-03-11",
+            "latest_successful_run_finished_at": "2026-03-12T10:00:00",
+        },
+    )
+
+    assert response.dimension_averages.relevancy == 8.2
+    assert response.top_intents[0].intent_code == "policy_inquiry"
+
+
+def test_grading_dashboard_correlations_response_accepts_canonical_payload() -> None:
+    response = GradingDashboardCorrelationsResponse(
+        date_window={"start_date": "2026-03-05", "end_date": "2026-03-11"},
+        total_graded_customer_days=12,
+        heatmap_cells=[
+            {
+                "dimension_key": "relevancy",
+                "dimension_label": "Relevancy",
+                "score_bucket": "1-4",
+                "conversation_count": 2,
+                "avg_satisfaction_score": 4.5,
+            }
+        ],
+        failure_funnel=[
+            {
+                "step_key": "total_graded_customer_days",
+                "label": "Total graded customer-days",
+                "count": 12,
+            },
+            {
+                "step_key": "loop_detected",
+                "label": "Loop detected",
+                "count": 2,
+            },
+        ],
+        frustration_histogram=[
+            {
+                "bucket_label": "1-2",
+                "min_score": 1,
+                "max_score": 2,
+                "count": 4,
+                "share_pct": 33.3,
+            }
+        ],
+        story_cards=[
+            {
+                "code": "failure_escalation_rate_pct",
+                "severity": "critical",
+                "title": "Failure escalations are elevated",
+                "metric_key": "escalation_failure_rate_pct",
+                "metric_value": 12.5,
+                "explanation": "Failure escalations exceeded the critical threshold.",
+            }
+        ],
+        freshness={
+            "latest_successful_run_id": "df35ea32-c0b2-46e4-954e-7707b9d3a62b",
+            "latest_successful_window_end_date": "2026-03-11",
+            "latest_successful_run_finished_at": "2026-03-12T10:00:00",
+        },
+    )
+
+    assert response.heatmap_cells[0].score_bucket == "1-4"
+    assert response.story_cards[0].severity.value == "critical"
+
+
+def test_grading_dashboard_daily_timeline_response_accepts_canonical_payload() -> None:
+    response = GradingDashboardDailyTimelineResponse(
+        target_date="2026-03-11",
+        hourly_buckets=[
+            {"hour": 0, "conversation_volume": 0, "resolution_rate_pct": 0.0},
+            {"hour": 10, "conversation_volume": 3, "resolution_rate_pct": 100.0},
+        ],
+        best_hour={"hour": 10, "conversation_volume": 3, "resolution_rate_pct": 100.0},
+        worst_hour={"hour": 0, "conversation_volume": 0, "resolution_rate_pct": 0.0},
+        scatter_points=[
+            {
+                "grade_id": "df35ea32-c0b2-46e4-954e-7707b9d3a62b",
+                "conversation_key": "phone:+971500000001",
+                "satisfaction_score": 8,
+                "frustration_score": 2,
+                "resolution": True,
+                "loop_detected": False,
+            }
+        ],
+        worst_performers=[
+            {
+                "grade_id": "df35ea32-c0b2-46e4-954e-7707b9d3a62b",
+                "conversation_key": "phone:+971500000001",
+                "contact_label": "Jane Doe",
+                "relevancy_score": 4,
+                "accuracy_score": 5,
+                "completeness_score": 4,
+                "clarity_score": 5,
+                "tone_score": 6,
+                "satisfaction_score": 3,
+                "frustration_score": 8,
+                "resolution": False,
+                "escalation_type": "Failure",
+                "intent_code": "policy_inquiry",
+                "intent_label": "Policy Inquiry",
+                "intent_category": "Policy Related",
+            }
+        ],
+        freshness={
+            "latest_successful_run_id": "df35ea32-c0b2-46e4-954e-7707b9d3a62b",
+            "latest_successful_window_end_date": "2026-03-11",
+            "latest_successful_run_finished_at": "2026-03-12T10:00:00",
+        },
+    )
+
+    assert response.best_hour is not None
+    assert response.worst_performers[0].intent_label == "Policy Inquiry"
