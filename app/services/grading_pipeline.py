@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.grading_extraction import (
     CustomerDayCandidate,
     CustomerDayTranscript,
+    MINIMUM_HUMAN_MESSAGES_FOR_GRADING,
     assemble_customer_day_transcript,
 )
 from app.services.grading_parser import GradingParseFailure, PromptExecutionParser
@@ -92,6 +93,16 @@ async def grade_customer_day(
             candidate=candidate,
             code=GradeCustomerDayFailureCode.EMPTY_TRANSCRIPT,
             message="No transcript messages were found for the requested customer-day.",
+            transcript=transcript,
+        )
+    if transcript.human_message_count < MINIMUM_HUMAN_MESSAGES_FOR_GRADING:
+        return GradeCustomerDayFailure(
+            candidate=candidate,
+            code=GradeCustomerDayFailureCode.EMPTY_TRANSCRIPT,
+            message=(
+                "Customer-day transcript must include at least "
+                f"{MINIMUM_HUMAN_MESSAGES_FOR_GRADING} inbound human messages before grading."
+            ),
             transcript=transcript,
         )
 

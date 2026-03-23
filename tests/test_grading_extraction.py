@@ -65,12 +65,37 @@ async def test_list_customer_day_candidates_prefers_canonical_identity_and_skips
             message="same phone same day duplicate candidate",
         ),
         _chat(
+            created_at=target_date + timedelta(minutes=2),
+            customer_phone="+971500000001",
+            message="third phone message to satisfy grading threshold",
+        ),
+        _chat(
             created_at=target_date,
             customer_email_address="  broker@example.com  ",
         ),
         _chat(
+            created_at=target_date + timedelta(minutes=1),
+            customer_email_address="broker@example.com",
+            message="second email message",
+        ),
+        _chat(
+            created_at=target_date + timedelta(minutes=2),
+            customer_email_address="broker@example.com",
+            message="third email message",
+        ),
+        _chat(
             created_at=target_date,
             session_id="  sess-100  ",
+        ),
+        _chat(
+            created_at=target_date + timedelta(minutes=1),
+            session_id="sess-100",
+            message="second session message",
+        ),
+        _chat(
+            created_at=target_date + timedelta(minutes=2),
+            session_id="sess-100",
+            message="third session message",
         ),
         _chat(
             created_at=target_date,
@@ -117,6 +142,14 @@ async def test_list_customer_day_candidates_filters_by_grade_date(db_session) ->
             created_at=datetime(2026, 3, 5, 11, 0, 0),
             customer_phone="+971500000002",
         ),
+        _chat(
+            created_at=datetime(2026, 3, 5, 11, 1, 0),
+            customer_phone="+971500000002",
+        ),
+        _chat(
+            created_at=datetime(2026, 3, 5, 11, 2, 0),
+            customer_phone="+971500000002",
+        ),
     )
 
     candidates = await list_customer_day_candidates(
@@ -130,6 +163,66 @@ async def test_list_customer_day_candidates_filters_by_grade_date(db_session) ->
             identity_type=IdentityType.PHONE,
             conversation_identity="+971500000002",
             grade_date=date(2026, 3, 5),
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_list_customer_day_candidates_requires_three_inbound_human_messages(
+    db_session,
+) -> None:
+    target_date = datetime(2026, 3, 7, 10, 0, 0)
+
+    await _seed(
+        db_session,
+        _chat(
+            created_at=target_date,
+            customer_phone="+971500000010",
+            direction="inbound",
+        ),
+        _chat(
+            created_at=target_date + timedelta(minutes=1),
+            customer_phone="+971500000010",
+            direction="incoming",
+        ),
+        _chat(
+            created_at=target_date + timedelta(minutes=2),
+            customer_phone="+971500000010",
+            direction="outbound",
+        ),
+        _chat(
+            created_at=target_date,
+            customer_phone="+971500000011",
+            direction="inbound",
+        ),
+        _chat(
+            created_at=target_date + timedelta(minutes=1),
+            customer_phone="+971500000011",
+            direction="customer",
+        ),
+        _chat(
+            created_at=target_date + timedelta(minutes=2),
+            customer_phone="+971500000011",
+            direction="outbound",
+        ),
+        _chat(
+            created_at=target_date + timedelta(minutes=3),
+            customer_phone="+971500000011",
+            direction="in",
+        ),
+    )
+
+    candidates = await list_customer_day_candidates(
+        db_session,
+        start_date=date(2026, 3, 7),
+        end_date=date(2026, 3, 7),
+    )
+
+    assert candidates == [
+        CustomerDayCandidate(
+            identity_type=IdentityType.PHONE,
+            conversation_identity="+971500000011",
+            grade_date=date(2026, 3, 7),
         )
     ]
 

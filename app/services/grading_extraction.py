@@ -10,6 +10,7 @@ from sqlalchemy.sql import Select
 
 from app.models.chats import ChatMessage
 from app.models.enums import (
+    DirectionType,
     IdentityType,
     normalize_channel,
     normalize_direction,
@@ -19,6 +20,9 @@ from app.models.enums import (
 )
 
 REPORTING_TIMEZONE = "Asia/Dubai"
+MINIMUM_HUMAN_MESSAGES_FOR_GRADING = 3
+_INBOUND_DIRECTION_TOKENS = ("inbound", "incoming", "in", "customer")
+_OUTBOUND_DIRECTION_TOKENS = ("outbound", "outgoing", "out", "agent")
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,6 +51,14 @@ class CustomerDayTranscript:
     candidate: CustomerDayCandidate
     messages: tuple[TranscriptMessage, ...] = field(default_factory=tuple)
     transcript_text: str = ""
+
+    @property
+    def human_message_count(self) -> int:
+        return sum(
+            1
+            for message in self.messages
+            if message.direction == DirectionType.INBOUND.value
+        )
 
 
 def resolve_canonical_identity(
@@ -104,6 +116,7 @@ def build_customer_day_candidates_stmt(
     identity_type_expr = canonical_identity_type_expr()
     identity_value_expr = canonical_identity_value_expr()
     grade_date_expr = gst_grade_date_expr()
+    human_message_count_expr = candidate_human_message_count_expr()
 
     stmt = (
         select(
@@ -112,7 +125,8 @@ def build_customer_day_candidates_stmt(
             grade_date_expr.label("grade_date"),
         )
         .where(identity_value_expr.is_not(None))
-        .distinct()
+        .group_by(identity_type_expr, identity_value_expr, grade_date_expr)
+        .having(human_message_count_expr >= MINIMUM_HUMAN_MESSAGES_FOR_GRADING)
         .order_by(grade_date_expr.asc(), identity_type_expr.asc(), identity_value_expr.asc())
     )
 
@@ -184,6 +198,24 @@ async def assemble_customer_day_transcript(
 
 def _nullif_blank(column):
     return func.nullif(func.btrim(cast(column, String())), "")
+
+
+def normalized_direction_expr(column: Any = ChatMessage.direction):
+    token_expr = func.lower(_nullif_blank(column))
+    return case(
+        (token_expr.in_(_INBOUND_DIRECTION_TOKENS), DirectionType.INBOUND.value),
+        (token_expr.in_(_OUTBOUND_DIRECTION_TOKENS), DirectionType.OUTBOUND.value),
+        else_=token_expr,
+    )
+
+
+def candidate_human_message_count_expr():
+    return func.count(
+        case(
+            (normalized_direction_expr() == DirectionType.INBOUND.value, 1),
+            else_=None,
+        )
+    )
 
 
 def _coerce_transcript_message(row: Any) -> TranscriptMessage:

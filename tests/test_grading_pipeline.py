@@ -170,6 +170,58 @@ async def _seed_transcript(db_session, candidate: CustomerDayCandidate) -> None:
                 message="Sure, I can help with the policy change requirements.",
                 direction="outbound",
             ),
+            _chat(
+                created_at=datetime(2026, 3, 9, 8, 2, 0),
+                customer_phone=candidate.conversation_identity,
+                message="The car is financed. Does that change anything?",
+                direction="customer",
+                intent="Policy Update",
+            ),
+            _chat(
+                created_at=datetime(2026, 3, 9, 8, 3, 0),
+                customer_phone=candidate.conversation_identity,
+                message="Yes, I will also need the bank letter and Emirates ID copy.",
+                direction="outbound",
+            ),
+            _chat(
+                created_at=datetime(2026, 3, 9, 8, 4, 0),
+                customer_phone=candidate.conversation_identity,
+                message="Understood, please send the renewal requirements.",
+                direction="in",
+                intent="Policy Update",
+            ),
+        ]
+    )
+    await db_session.commit()
+
+
+async def _seed_partial_transcript(db_session, candidate: CustomerDayCandidate) -> None:
+    db_session.add_all(
+        [
+            _chat(
+                created_at=datetime(2026, 3, 9, 9, 0, 0),
+                customer_phone=candidate.conversation_identity,
+                message="Hi",
+                direction="inbound",
+            ),
+            _chat(
+                created_at=datetime(2026, 3, 9, 9, 1, 0),
+                customer_phone=candidate.conversation_identity,
+                message="Hello, how can I help?",
+                direction="outbound",
+            ),
+            _chat(
+                created_at=datetime(2026, 3, 9, 9, 2, 0),
+                customer_phone=candidate.conversation_identity,
+                message="Need renewal details.",
+                direction="customer",
+            ),
+            _chat(
+                created_at=datetime(2026, 3, 9, 9, 3, 0),
+                customer_phone=candidate.conversation_identity,
+                message="Please share the vehicle policy number.",
+                direction="outbound",
+            ),
         ]
     )
     await db_session.commit()
@@ -280,9 +332,9 @@ async def test_grade_customer_day_runs_full_pipeline_and_persists_result(db_sess
 
     assert result.candidate == candidate
     assert result.ok is True
-    assert len(result.transcript.messages) == 2
+    assert len(result.transcript.messages) == 5
     assert result.prompt_plan.metadata["bundle_count"] == 5
-    assert result.prompt_plan.metadata["message_count"] == 2
+    assert result.prompt_plan.metadata["message_count"] == 5
     assert [bundle.prompt_key for bundle, _ in result.raw_outputs] == [
         prompt_domain.value for prompt_domain in PromptDomain
     ]
@@ -385,6 +437,44 @@ async def test_grade_customer_day_returns_empty_transcript_failure_without_provi
 
     assert result.ok is False
     assert result.code == GradeCustomerDayFailureCode.EMPTY_TRANSCRIPT
+    assert result.prompt_plan is None
+    assert provider_called is False
+    assert grade_count == 0
+
+
+@pytest.mark.asyncio
+async def test_grade_customer_day_requires_three_inbound_human_messages(
+    db_session,
+) -> None:
+    candidate = _candidate(conversation_identity="+971500000106")
+    await _seed_partial_transcript(db_session, candidate)
+    provider_called = False
+
+    async def provider(_request) -> str:
+        nonlocal provider_called
+        provider_called = True
+        return json.dumps(_grading_output().model_dump(mode="json"))
+
+    result = await grade_customer_day(
+        db_session,
+        candidate,
+        GradingPipelineDependencies(
+            settings=_settings(),
+            prompt_planner=build_prompt_execution_plan,
+            provider=provider,
+            parser=parse_prompt_execution_results,
+            persistence=upsert_customer_day_grade,
+        ),
+    )
+
+    grade_count = await db_session.scalar(select(func.count()).select_from(ConversationGrade))
+
+    assert result.ok is False
+    assert result.code == GradeCustomerDayFailureCode.EMPTY_TRANSCRIPT
+    assert (
+        result.message
+        == "Customer-day transcript must include at least 3 inbound human messages before grading."
+    )
     assert result.prompt_plan is None
     assert provider_called is False
     assert grade_count == 0
