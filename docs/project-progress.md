@@ -6,6 +6,10 @@
 - Current Phase: `Milestone 2 Phase 8 - Deployment Readiness`
 
 ## Current Status
+- Phase 8 deployment hardening patch prepared for redeploy (`2026-03-23`):
+  - `app/core/config.py` now accepts `OPENROUTER_API_KEY` as an alias for the OpenAI-compatible runtime `GRADING_API_KEY`, reducing OpenRouter deployment misconfiguration risk.
+  - `.env.example` and `docs/milestone-2/m2-phase-8.md` now document the exact OpenRouter production profile for nightly grading with `minimax/minimax-m2.5` at `01:00 GST`.
+  - Remote production inspection confirmed the prior deploy had `GRADING_PROVIDER=mock`, no `GRADING_BATCH_*` overrides, and zero `trigger_type='scheduled'` rows, so the nightly run was disabled by configuration rather than failing at runtime.
 - Milestone 2 Phase 8 Gate 8.0 + Streams A/B/C implemented (`2026-03-17`):
   - Gate 8.0: `.dockerignore`, split `requirements.txt`/`requirements-test.txt`, `entrypoint.sh`, `Dockerfile`, `docker-compose.yml` created.
   - Stream A: `cors_allowed_origins` setting added to `app/core/config.py`; `CORSMiddleware` conditionally applied in `app/main.py`.

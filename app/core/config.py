@@ -106,6 +106,13 @@ class Settings(BaseSettings):
         default=None,
         description="Optional API key used by external grading providers.",
     )
+    openrouter_api_key: str | None = Field(
+        default=None,
+        description=(
+            "Optional OpenRouter API key alias used by the OpenAI-compatible "
+            "grading provider path."
+        ),
+    )
     grading_base_url: str | None = Field(
         default=None,
         description="Optional base URL override for OpenAI-compatible grading providers.",
@@ -367,7 +374,7 @@ class Settings(BaseSettings):
             )
         return value
 
-    @field_validator("grading_api_key", "grading_base_url")
+    @field_validator("grading_api_key", "openrouter_api_key", "grading_base_url")
     @classmethod
     def normalize_optional_grading_fields(cls, value: str | None) -> str | None:
         if value is None:
@@ -377,13 +384,15 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_grading_provider_requirements(self) -> "Settings":
+        if self.grading_api_key is None and self.openrouter_api_key is not None:
+            self.grading_api_key = self.openrouter_api_key
         if (
             self.grading_provider == GRADING_PROVIDER_OPENAI_COMPATIBLE
             and self.grading_api_key is None
         ):
             raise ValueError(
-                "GRADING_API_KEY is required when GRADING_PROVIDER is "
-                "'openai_compatible'."
+                "GRADING_API_KEY or OPENROUTER_API_KEY is required when "
+                "GRADING_PROVIDER is 'openai_compatible'."
             )
         validate_prompt_pack_assets(
             root_dir=self.resolved_grading_prompt_assets_dir,

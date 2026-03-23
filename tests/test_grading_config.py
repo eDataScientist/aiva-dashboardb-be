@@ -30,6 +30,9 @@ def _base_settings(**overrides: str | int) -> dict[str, str | int]:
         "auth_jwt_secret": "grading-config-secret-at-least-32-chars",
         "auth_jwt_algorithm": "HS256",
         "auth_access_token_expire_minutes": 60,
+        "grading_api_key": "",
+        "openrouter_api_key": "",
+        "grading_base_url": "",
     }
     values.update(overrides)
     return values
@@ -74,8 +77,20 @@ def test_settings_require_api_key_for_openai_compatible_provider() -> None:
             **_base_settings(
                 grading_provider="openai_compatible",
                 grading_api_key="   ",
+                openrouter_api_key="   ",
             )
         )
+
+
+def test_settings_allow_openrouter_api_key_for_openai_compatible_provider() -> None:
+    settings = Settings(
+        **_base_settings(
+            grading_provider="openai_compatible",
+            openrouter_api_key="  openrouter-key  ",
+        )
+    )
+
+    assert settings.grading_api_key == "openrouter-key"
 
 
 def test_settings_reject_invalid_grading_timeout() -> None:

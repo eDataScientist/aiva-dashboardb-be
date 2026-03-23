@@ -67,7 +67,11 @@ def _valid_provider_payload() -> dict[str, object]:
     }
 
 
-def _provider_request(mock_response: str | None = None) -> GradingProviderRequest:
+def _provider_request(
+    mock_response: str | None = None,
+    *,
+    model: str = GRADING_DEFAULT_MODEL,
+) -> GradingProviderRequest:
     metadata: dict[str, object] = {}
     if mock_response is not None:
         metadata["mock_response"] = mock_response
@@ -79,7 +83,7 @@ def _provider_request(mock_response: str | None = None) -> GradingProviderReques
             prompt_version=GRADING_DEFAULT_PROMPT_VERSION,
             metadata=metadata,
         ),
-        model=GRADING_DEFAULT_MODEL,
+        model=model,
         timeout_seconds=5,
         max_retries=2,
     )
@@ -129,18 +133,29 @@ def _partial_provider_payloads() -> dict[str, dict[str, object]]:
     }
 
 
-def _settings(*, grading_provider: str, grading_api_key: str | None = None) -> Settings:
+def _settings(
+    *,
+    grading_provider: str,
+    grading_api_key: str | None = None,
+    openrouter_api_key: str | None = None,
+    grading_base_url: str | None = None,
+    grading_model: str | None = None,
+) -> Settings:
     kwargs: dict[str, object] = {
         "database_url": "sqlite:///tests.db",
         "auth_jwt_secret": "x" * 32,
         "auth_jwt_algorithm": "HS256",
         "auth_access_token_expire_minutes": 60,
         "grading_provider": grading_provider,
-        "grading_model": GRADING_DEFAULT_MODEL,
+        "grading_model": grading_model or GRADING_DEFAULT_MODEL,
         "grading_prompt_version": GRADING_DEFAULT_PROMPT_VERSION,
     }
     if grading_api_key is not None:
         kwargs["grading_api_key"] = grading_api_key
+    if openrouter_api_key is not None:
+        kwargs["openrouter_api_key"] = openrouter_api_key
+    if grading_base_url is not None:
+        kwargs["grading_base_url"] = grading_base_url
     return Settings(**kwargs)
 
 
@@ -421,6 +436,43 @@ async def test_build_grading_provider_surfaces_openai_transport_results() -> Non
         "model": GRADING_DEFAULT_MODEL,
         "provider": "openai_compatible",
         "api_key": "api-key",
+    }
+
+
+@pytest.mark.asyncio
+async def test_build_grading_provider_uses_openrouter_api_key_alias() -> None:
+    captured: dict[str, object] = {}
+
+    async def fake_openai_transport(
+        request: GradingProviderRequest,
+        settings: Settings,
+    ) -> str:
+        captured["model"] = request.model
+        captured["provider"] = settings.grading_provider
+        captured["api_key"] = settings.grading_api_key
+        captured["base_url"] = settings.grading_base_url
+        return '{"ok": true}'
+
+    provider = build_grading_provider(
+        settings=_settings(
+            grading_provider="openai_compatible",
+            openrouter_api_key="openrouter-key",
+            grading_base_url="https://openrouter.ai/api/v1",
+            grading_model="minimax/minimax-m2.5",
+        ),
+        openai_transport=fake_openai_transport,
+    )
+
+    raw_output = await provider(
+        _provider_request(model="minimax/minimax-m2.5")
+    )
+
+    assert raw_output == '{"ok": true}'
+    assert captured == {
+        "model": "minimax/minimax-m2.5",
+        "provider": "openai_compatible",
+        "api_key": "openrouter-key",
+        "base_url": "https://openrouter.ai/api/v1",
     }
 
 

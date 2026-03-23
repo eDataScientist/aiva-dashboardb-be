@@ -79,7 +79,7 @@ Last Updated: `2026-03-02` (Post-completion Stream A review: `P1.2.2` approved; 
 
 ## Milestone 2: AI Grading, Monitoring, and Access Foundations
 Status: `IN PROGRESS`
-Last Updated: `2026-03-17` (Phase 7 Stream D rereview progressed; `P2.7.15` through `P2.7.17` approved `DONE`, `P2.7.18` remains `IN REVIEW` pending final docs consistency pass)
+Last Updated: `2026-03-23` (Phase 8 deployment hardening patch prepared for OpenRouter nightly grading; provider/env/docs alignment updated while `P2.7.18` remains `IN REVIEW`)
 
 ## Phase 1 - Gate 1.0 (Shared Milestone 2 Data Contracts)
 - [x] `P2.1.1 - Design - Finalize customer-day grade grain and canonical identity contract - Gate (Independent)`
