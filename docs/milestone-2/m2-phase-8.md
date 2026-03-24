@@ -38,7 +38,7 @@ The live server runs PostgreSQL inside a Docker container named `postgres_app` o
 | `DATABASE_URL` | Yes | -- | `postgresql+psycopg2://user:pass@postgres_app:5432/aiva` |
 | `AUTH_JWT_SECRET` | Yes | -- | Min 32 characters |
 | `GRADING_PROVIDER` | No | `mock` | `mock` or `openai_compatible` |
-| `GRADING_MODEL` | No | `mock-grade-v1` | Production OpenRouter deployment should set `minimax/minimax-m2.5` |
+| `GRADING_MODEL` | No | `mock-grade-v1` | Production: `gpt-4o-mini` (direct OpenAI) or `minimax/minimax-m2.5` (OpenRouter) |
 | `GRADING_API_KEY` | Conditional | -- | Required when provider is `openai_compatible`; primary runtime key variable |
 | `OPENROUTER_API_KEY` | Conditional | -- | Optional alias for `GRADING_API_KEY` when using OpenRouter |
 | `GRADING_BASE_URL` | Conditional | -- | Set to `https://openrouter.ai/api/v1` for OpenRouter |
@@ -51,9 +51,23 @@ The live server runs PostgreSQL inside a Docker container named `postgres_app` o
 
 See `.env.example` for the full list of tunable settings.
 
-### Production OpenRouter Profile
-For the nightly production grading run, set the deployment `.env` to:
+### Production Grading Profiles
+Phase 9 replaced the `httpx` transport with the official `openai` SDK (`AsyncOpenAI`). Both direct OpenAI and OpenRouter are supported through the same SDK -- the only config difference is `GRADING_BASE_URL` and `GRADING_MODEL`. Switching between them is a config-only change with no code changes required.
 
+#### Direct OpenAI
+```env
+GRADING_PROVIDER=openai_compatible
+GRADING_MODEL=gpt-4o-mini
+GRADING_API_KEY=<openai-api-key>
+GRADING_BASE_URL=
+GRADING_BATCH_SCHEDULER_ENABLED=true
+GRADING_BATCH_SCHEDULER_HOUR_GST=1
+GRADING_BATCH_ALLOW_MOCK_PROVIDER_RUNS=false
+```
+
+When `GRADING_BASE_URL` is unset the `AsyncOpenAI` SDK defaults to `https://api.openai.com/v1`.
+
+#### OpenRouter
 ```env
 GRADING_PROVIDER=openai_compatible
 GRADING_MODEL=minimax/minimax-m2.5
@@ -65,10 +79,12 @@ GRADING_BATCH_SCHEDULER_HOUR_GST=1
 GRADING_BATCH_ALLOW_MOCK_PROVIDER_RUNS=false
 ```
 
-Notes:
-- `OPENROUTER_API_KEY` is now accepted as an alias for `GRADING_API_KEY`, but `GRADING_API_KEY` remains the primary runtime variable.
+`OPENROUTER_API_KEY` is accepted as an alias for `GRADING_API_KEY`, but `GRADING_API_KEY` remains the primary runtime variable.
+
+#### Common Notes
 - The nightly scheduler targets the **previous GST day** and launches at `01:00 GST`.
 - Leave the scheduler enabled on only one deployed backend instance at a time.
+- Any OpenAI-compatible provider can be used by setting `GRADING_BASE_URL` to its API endpoint.
 
 ## Deployment Steps
 
@@ -79,7 +95,7 @@ docker network inspect n8n_default
 
 # 2. Populate .env with credentials (already gitignored)
 cp .env.example .env
-# Edit .env with real DATABASE_URL, AUTH_JWT_SECRET, OpenRouter provider settings, and scheduler settings.
+# Edit .env with real DATABASE_URL, AUTH_JWT_SECRET, grading provider settings, and scheduler settings.
 
 # 3. Build and start
 docker compose build
@@ -100,6 +116,15 @@ docker compose exec aiva-backend alembic upgrade head
 # Stop
 docker compose down
 ```
+
+## Completion Status (`2026-03-24`)
+- Phase 8 is considered complete based on the live deployment verification already performed during the March 23-24 production checks.
+- Verified outcomes:
+  - the deployed backend restarted cleanly and remained `running` / `healthy`
+  - startup logs showed normal migration and Uvicorn boot behavior with repeated successful `/health` responses
+  - live runtime settings confirmed scheduler-enabled grading configuration was loaded
+  - a scheduled nightly grading run was observed in `grading_runs` at `2026-03-24 01:00 GST`
+- Remaining operational work is no longer deployment-readiness work. It is now Phase 9 cutover work focused on provider-path stability and benchmarked production promotion.
 
 ## Verification Checklist
 1. `docker compose build` -- image builds without errors

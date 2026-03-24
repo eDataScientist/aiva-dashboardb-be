@@ -5,7 +5,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Protocol
 
-import httpx
+import openai
 
 from app.core.config import Settings, get_settings
 from app.core.constants import (
@@ -186,9 +186,14 @@ async def _default_openai_compatible_transport(
     request: GradingProviderRequest,
     settings: Settings,
 ) -> str:
-    base_url = (settings.grading_base_url or "https://api.openai.com/v1").rstrip("/")
-    timeout = httpx.Timeout(request.timeout_seconds)
-    messages = []
+    client_kwargs: dict[str, object] = {
+        "api_key": settings.grading_api_key,
+        "timeout": float(request.timeout_seconds),
+    }
+    if settings.grading_base_url:
+        client_kwargs["base_url"] = settings.grading_base_url
+
+    messages: list[dict[str, str]] = []
     if request.prompt.system_prompt is not None:
         messages.append(
             {
@@ -202,39 +207,28 @@ async def _default_openai_compatible_transport(
             "content": request.prompt.user_prompt,
         }
     )
-    payload = {
-        "model": request.model,
-        "response_format": {"type": "json_object"},
-        "messages": messages,
-    }
-    headers = {
-        "Authorization": f"Bearer {settings.grading_api_key}",
-        "Content-Type": "application/json",
-    }
 
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.post(
-                f"{base_url}/chat/completions",
-                json=payload,
-                headers=headers,
+        async with openai.AsyncOpenAI(**client_kwargs) as client:
+            completion = await client.chat.completions.create(
+                model=request.model,
+                messages=messages,
+                response_format={"type": "json_object"},
             )
-            response.raise_for_status()
-    except httpx.TimeoutException as exc:
+    except openai.APITimeoutError as exc:
         raise GradingProviderError(
             f"Grading provider timed out after {request.timeout_seconds} seconds."
         ) from exc
-    except httpx.HTTPStatusError as exc:
+    except openai.APIStatusError as exc:
         raise GradingProviderError(
-            f"Grading provider returned HTTP {exc.response.status_code}."
+            f"Grading provider returned HTTP {exc.status_code}."
         ) from exc
-    except httpx.HTTPError as exc:
+    except openai.APIConnectionError as exc:
         raise GradingProviderError("Grading provider request failed.") from exc
 
     try:
-        response_payload = response.json()
-        content = response_payload["choices"][0]["message"]["content"]
-    except (ValueError, KeyError, IndexError, TypeError) as exc:
+        content = completion.choices[0].message.content
+    except (IndexError, AttributeError) as exc:
         raise GradingProviderError(
             "Grading provider returned an unexpected response payload."
         ) from exc

@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 from datetime import date, datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import openai
 import pytest
 
 from app.core.config import Settings
@@ -29,6 +31,7 @@ from app.services.grading_prompt import (
 from app.services.grading_provider import (
     GradingProviderError,
     GradingProviderRequest,
+    _default_openai_compatible_transport,
     build_grading_provider,
 )
 
@@ -551,3 +554,195 @@ async def test_build_grading_provider_passes_prompt_pack_metadata_to_openai_tran
             "provider": "openai_compatible",
         },
     ]
+
+
+# ---------------------------------------------------------------------------
+# AsyncOpenAI default transport tests (P2.9.3)
+# ---------------------------------------------------------------------------
+
+
+def _openai_settings(
+    *,
+    grading_base_url: str | None = None,
+) -> Settings:
+    kwargs: dict[str, object] = {
+        "database_url": "sqlite:///tests.db",
+        "auth_jwt_secret": "x" * 32,
+        "auth_jwt_algorithm": "HS256",
+        "auth_access_token_expire_minutes": 60,
+        "grading_provider": "openai_compatible",
+        "grading_api_key": "test-api-key",
+        "grading_model": GRADING_DEFAULT_MODEL,
+        "grading_prompt_version": GRADING_DEFAULT_PROMPT_VERSION,
+    }
+    if grading_base_url is not None:
+        kwargs["grading_base_url"] = grading_base_url
+    return Settings(**kwargs)
+
+
+def _openai_request() -> GradingProviderRequest:
+    return GradingProviderRequest(
+        prompt=PromptBundle(
+            system_prompt="system",
+            user_prompt="user",
+            prompt_version=GRADING_DEFAULT_PROMPT_VERSION,
+            metadata={},
+        ),
+        model=GRADING_DEFAULT_MODEL,
+        timeout_seconds=10,
+        max_retries=0,
+    )
+
+
+@pytest.mark.asyncio
+async def test_default_openai_transport_raises_provider_error_on_timeout() -> None:
+    with patch("app.services.grading_provider.openai.AsyncOpenAI") as mock_cls:
+        mock_client = AsyncMock()
+        mock_cls.return_value = mock_client
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.chat.completions.create = AsyncMock(
+            side_effect=openai.APITimeoutError(request=MagicMock()),
+        )
+
+        with pytest.raises(GradingProviderError, match="timed out"):
+            await _default_openai_compatible_transport(
+                _openai_request(), _openai_settings()
+            )
+
+
+@pytest.mark.asyncio
+async def test_default_openai_transport_raises_provider_error_on_http_error() -> None:
+    with patch("app.services.grading_provider.openai.AsyncOpenAI") as mock_cls:
+        mock_client = AsyncMock()
+        mock_cls.return_value = mock_client
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        mock_response = MagicMock()
+        mock_response.status_code = 429
+        mock_response.headers = {}
+        mock_client.chat.completions.create = AsyncMock(
+            side_effect=openai.APIStatusError(
+                message="rate limited",
+                response=mock_response,
+                body=None,
+            ),
+        )
+
+        with pytest.raises(GradingProviderError, match="HTTP 429"):
+            await _default_openai_compatible_transport(
+                _openai_request(), _openai_settings()
+            )
+
+
+@pytest.mark.asyncio
+async def test_default_openai_transport_raises_provider_error_on_empty_content() -> None:
+    with patch("app.services.grading_provider.openai.AsyncOpenAI") as mock_cls:
+        mock_client = AsyncMock()
+        mock_cls.return_value = mock_client
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        mock_choice = MagicMock()
+        mock_choice.message.content = None
+        mock_completion = MagicMock()
+        mock_completion.choices = [mock_choice]
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_completion)
+
+        with pytest.raises(GradingProviderError, match="non-string"):
+            await _default_openai_compatible_transport(
+                _openai_request(), _openai_settings()
+            )
+
+
+@pytest.mark.asyncio
+async def test_default_openai_transport_raises_provider_error_on_unexpected_payload() -> None:
+    with patch("app.services.grading_provider.openai.AsyncOpenAI") as mock_cls:
+        mock_client = AsyncMock()
+        mock_cls.return_value = mock_client
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        mock_completion = MagicMock()
+        mock_completion.choices = []
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_completion)
+
+        with pytest.raises(GradingProviderError, match="unexpected response"):
+            await _default_openai_compatible_transport(
+                _openai_request(), _openai_settings()
+            )
+
+
+@pytest.mark.asyncio
+async def test_default_openai_transport_passes_base_url_when_configured() -> None:
+    with patch("app.services.grading_provider.openai.AsyncOpenAI") as mock_cls:
+        mock_client = AsyncMock()
+        mock_cls.return_value = mock_client
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        mock_choice = MagicMock()
+        mock_choice.message.content = '{"ok": true}'
+        mock_completion = MagicMock()
+        mock_completion.choices = [mock_choice]
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_completion)
+
+        result = await _default_openai_compatible_transport(
+            _openai_request(),
+            _openai_settings(grading_base_url="https://openrouter.ai/api/v1"),
+        )
+
+        assert result == '{"ok": true}'
+        call_kwargs = mock_cls.call_args[1]
+        assert call_kwargs["base_url"] == "https://openrouter.ai/api/v1"
+
+
+@pytest.mark.asyncio
+async def test_default_openai_transport_omits_base_url_when_not_configured() -> None:
+    with patch("app.services.grading_provider.openai.AsyncOpenAI") as mock_cls:
+        mock_client = AsyncMock()
+        mock_cls.return_value = mock_client
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        mock_choice = MagicMock()
+        mock_choice.message.content = '{"ok": true}'
+        mock_completion = MagicMock()
+        mock_completion.choices = [mock_choice]
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_completion)
+
+        result = await _default_openai_compatible_transport(
+            _openai_request(),
+            _openai_settings(),
+        )
+
+        assert result == '{"ok": true}'
+        call_kwargs = mock_cls.call_args[1]
+        assert "base_url" not in call_kwargs
+
+
+@pytest.mark.asyncio
+async def test_default_openai_transport_sends_json_response_format() -> None:
+    with patch("app.services.grading_provider.openai.AsyncOpenAI") as mock_cls:
+        mock_client = AsyncMock()
+        mock_cls.return_value = mock_client
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        mock_choice = MagicMock()
+        mock_choice.message.content = '{"ok": true}'
+        mock_completion = MagicMock()
+        mock_completion.choices = [mock_choice]
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_completion)
+
+        await _default_openai_compatible_transport(
+            _openai_request(),
+            _openai_settings(),
+        )
+
+        create_kwargs = mock_client.chat.completions.create.call_args[1]
+        assert create_kwargs["response_format"] == {"type": "json_object"}
+        assert create_kwargs["model"] == GRADING_DEFAULT_MODEL
+        assert any(m["role"] == "system" for m in create_kwargs["messages"])
+        assert any(m["role"] == "user" for m in create_kwargs["messages"])

@@ -3,8 +3,7 @@
 ## Goals
 - Replace the custom `httpx`-based grading transport with the official OpenAI SDK (`AsyncOpenAI`) so the backend runtime uses the same proven client stack as the legacy export script.
 - Preserve the existing `openai_compatible` provider enum, config contract, scheduler, batch execution, and API surface -- the change is internal to the transport layer.
-- Update production deployment defaults to use direct OpenAI (`gpt-4o-mini`) instead of OpenRouter + Minimax, based on replay evidence showing 10/10 vs 0-3/10 reliability.
-- Leave deployment in a state where rollback to OpenRouter is a config-only change (swap `GRADING_BASE_URL` and `GRADING_MODEL`).
+- Support both direct OpenAI and OpenRouter as co-equal production profiles through the same `AsyncOpenAI` SDK, switchable via config only (`GRADING_BASE_URL` and `GRADING_MODEL`).
 
 ## Problem Statement
 - The backend runtime grades through `app/services/grading_provider.py`, which uses a custom `httpx` transport (`_default_openai_compatible_transport`) to make OpenAI-compatible chat completion requests.
@@ -37,8 +36,7 @@
   - `GRADING_BASE_URL` -- passed to `AsyncOpenAI(base_url=...)`. Defaults to `None` (SDK default: `https://api.openai.com/v1`).
   - `GRADING_MODEL` -- passed to `client.chat.completions.create(model=...)`
   - `GRADING_REQUEST_TIMEOUT_SECONDS` -- passed to `AsyncOpenAI(timeout=...)`
-- Production deployment recommendation changes from OpenRouter + Minimax to direct OpenAI + `gpt-4o-mini`.
-- Rollback to OpenRouter requires only setting `GRADING_BASE_URL` and `GRADING_MODEL` back to OpenRouter values.
+- Both direct OpenAI and OpenRouter are co-equal production options. Switching between them requires only changing `GRADING_BASE_URL`, `GRADING_MODEL`, and `GRADING_API_KEY`.
 
 ### 5) Endpoints
 - No endpoint changes. All existing grading run trigger, history, metrics, monitoring, and dashboard endpoints remain stable.
@@ -57,7 +55,7 @@
 ## Phase 9 Success Criteria
 - Backend grading transport uses `AsyncOpenAI` from the official `openai` SDK instead of raw `httpx`.
 - All existing grading pipeline, batch, scheduler, and API tests pass without modification (or with minimal transport-mock adjustments).
-- Production deployment docs recommend direct OpenAI + `gpt-4o-mini` with documented rollback to OpenRouter.
+- Production deployment docs present direct OpenAI and OpenRouter as co-equal profiles, switchable via config only.
 - Nightly grading run completes successfully on the new transport.
 
 ## Test Impact Analysis
@@ -144,12 +142,34 @@ These tests should mock `AsyncOpenAI` at the class level (e.g. `unittest.mock.pa
 
 | Task ID | Title | Goal / Acceptance Criteria | Dependencies | Files to Modify/Create (Expected) | Testing / Validation |
 |---|---|---|---|---|---|
-| 9.1.1 | `P2.9.5 - Config - Update deployment docs and .env.example for direct OpenAI production profile` | Update Phase 8 deployment docs and `.env.example` to recommend direct OpenAI + `gpt-4o-mini` as the production profile. Document rollback to OpenRouter as a config-only change. Remove the OpenRouter-specific production profile as the primary recommendation. | `P2.9.4` | `.env.example`, `docs/milestone-2/m2-phase-8.md`, `docs/milestone-2/m2-phase-9.md` | Docs review confirms the production profile and rollback instructions are clear. |
+| 9.1.1 | `P2.9.5 - Config - Update deployment docs and .env.example with co-equal OpenAI and OpenRouter profiles` | Update Phase 8 deployment docs and `.env.example` to present direct OpenAI and OpenRouter as co-equal production profiles, both using the `AsyncOpenAI` SDK. | `P2.9.4` | `.env.example`, `docs/milestone-2/m2-phase-8.md`, `docs/milestone-2/m2-phase-9.md` | Docs review confirms both profiles and switching instructions are clear. |
 | 9.1.2 | `P2.9.6 - QA - Deploy, run production verification, and update progress docs` | Rebuild and redeploy the Docker image with the OpenAI SDK transport. Trigger or observe a nightly grading run. Confirm successful completion. Update task and progress docs. | `P2.9.5` | `docs/tasks.md`, `docs/project-progress.md`, `docs/milestone-2/m2-phase-9.md` | Deployed container starts cleanly; at least one grading run completes successfully on the new transport; docs reflect the cutover outcome. |
 
 ## Execution Order
 1. Gate 9.0: Add the SDK dependency, swap the transport, add new transport tests, run full suite. Sequential within the gate.
 2. Gate 9.1: Update deployment docs, deploy and verify in production. Sequential within the gate.
+
+## Completion Status (`2026-03-24`)
+
+### Gate 9.0 -- Transport Swap and Test Coverage
+- **P2.9.1** -- Added `openai>=1.30.0,<2.0.0` to `requirements.txt`. Import verified.
+- **P2.9.2** -- Replaced `_default_openai_compatible_transport` in `grading_provider.py`: `httpx.AsyncClient` replaced with `openai.AsyncOpenAI`. Error classification preserved (`GradingProviderError` for `APITimeoutError`, `APIStatusError`, `APIConnectionError`, empty/non-string content). `OpenAICompatibleTransport` protocol signature unchanged.
+- **P2.9.3** -- Added 7 new tests in `test_grading_parser.py` covering timeout wrapping, HTTP error wrapping, empty content, unexpected payload, `base_url` presence/absence, and `response_format` passthrough. All mock `AsyncOpenAI` at class level.
+- **P2.9.4** -- Full suite: **335 tests passed**, 0 failures. `compileall` clean.
+
+### Gate 9.1 -- Deployment Update and Production Verification
+- **P2.9.5** -- Updated `.env.example` and `m2-phase-8.md` to present direct OpenAI and OpenRouter as co-equal production profiles, both using the `AsyncOpenAI` SDK.
+- **P2.9.6** -- Production deployment and nightly verification is pending operator action (rebuild Docker image with new `openai` SDK dependency and update `.env` to direct OpenAI credentials).
+
+### Files Modified
+| File | Action | Purpose |
+|---|---|---|
+| `requirements.txt` | Modified | Added `openai>=1.30.0,<2.0.0` as production dependency |
+| `app/services/grading_provider.py` | Modified | Replaced `httpx` transport with `AsyncOpenAI` SDK client |
+| `tests/test_grading_parser.py` | Modified | Added 7 new `AsyncOpenAI` transport tests |
+| `.env.example` | Modified | Updated production profile to direct OpenAI + `gpt-4o-mini` |
+| `docs/milestone-2/m2-phase-8.md` | Modified | Updated deployment docs with new production/rollback profiles |
+| `docs/milestone-2/m2-phase-9.md` | Modified | Added completion status |
 
 ## Rollback Path
 - If the new transport causes production failures, rollback is a config change:
