@@ -113,6 +113,9 @@ This document captures milestone-level planning decisions made during discussion
 - Story cards and attention signals should be server-generated, deterministic derived insights so the frontend receives ready-to-render severity, metric, and explanation payloads.
 - Phase 7 access should match the current authenticated analytics/metrics/monitoring baseline (`super_admin`, `company_admin`, and `analyst` allowed).
 - Phase 8 is now reserved for milestone-wide QA/hardening after the new dashboard endpoints are implemented.
+- Phase 9 should promote explicit provider families (`openai`, `openrouter`) instead of one generic `openai_compatible` production mode.
+- Direct OpenAI should be evaluated inside the backend runtime with the official SDK before any production cutover recommendation is made.
+- Provider cutover decisions should be based on a replay corpus that separates transport/client effects from provider/model effects.
 
 ## Phase Ordering (High-Level)
 - Data contract and migrations should come before auth implementation.
@@ -120,6 +123,7 @@ This document captures milestone-level planning decisions made during discussion
 - Auth/accounts foundation should follow the data-contract phase.
 - Dashboard API work should follow the graded metrics and monitoring implementations so it can reuse their stabilized semantics.
 - Milestone-wide QA/hardening now follows the dashboard API as Phase 8.
+- Provider reliability realignment is now planned as Phase 9 following Phase 8 deployment hardening.
 
 ## Conversation/Monitoring Model Direction
 - Milestone 2 monitoring should use a `customer-day` (conversation-day) grain, not the Milestone 1 cross-range conversation list behavior.

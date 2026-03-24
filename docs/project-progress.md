@@ -6,6 +6,10 @@
 - Current Phase: `Milestone 2 Phase 8 - Deployment Readiness`
 
 ## Current Status
+- Phase 9 plan drafted (`2026-03-24`):
+  - added `docs/milestone-2/m2-phase-9.md` to formalize the corrective work needed to move production grading away from one ambiguous `openai_compatible` path and toward explicit provider families.
+  - added `P2.9.1` through `P2.9.16` to `docs/tasks.md`, covering provider-contract review, SDK/runtime integration, replay benchmarking, and rollout/rollback documentation.
+  - planning conclusion: the direct OpenAI replay is a strong signal, but production cutover should only happen after the backend runtime compares direct OpenAI and OpenRouter on the same corpus and persists enough run metadata for incident review.
 - Phase 8 deployment hardening patch prepared for redeploy (`2026-03-23`):
   - `app/core/config.py` now accepts `OPENROUTER_API_KEY` as an alias for the OpenAI-compatible runtime `GRADING_API_KEY`, reducing OpenRouter deployment misconfiguration risk.
   - `.env.example` and `docs/milestone-2/m2-phase-8.md` now document the exact OpenRouter production profile for nightly grading with `minimax/minimax-m2.5` at `01:00 GST`.
@@ -948,6 +952,7 @@
 ## Next Recommended Action
 - Verify Phase 8 deployment: `docker compose build` then `docker compose up -d`; confirm health check passes and OpenAPI docs are accessible on `http://localhost:8000/docs`.
 - Complete `EDA-180` (P2.7.18 docs) rereview to close Phase 7 Stream D.
+- Start Gate 9.0 with `P2.9.1` to lock the provider acceptance criteria and replay corpus before changing the production grading runtime.
 
 ## Notes
 - Kanban MCP is reachable and synchronized with current execution state.

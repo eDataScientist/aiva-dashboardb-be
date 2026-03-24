@@ -99,13 +99,22 @@ Subtasks (brief):
 - Leave the dashboard API in a reviewable state with deterministic tests and a clean handoff into milestone-wide hardening.
 
 ## Phase 8 - Testing, QA, and Hardening
-Objective: Validate Milestone 2 end-to-end and leave the project in a stable, reviewable state.
+Objective: Validate Milestone 2 end-to-end, complete deployment hardening, and leave the project in a stable, reviewable state.
 
 Subtasks (brief):
 - Add/expand tests for auth, profiles, grading, metrics, monitoring, and dashboard endpoints.
 - Add fixture-based parser validation and integration coverage.
 - Run milestone QA verification (migrations, runtime checks, API behavior).
 - Finalize handoff-ready documentation and checklist status.
+
+## Phase 9 - Provider Cutover
+Objective: realign the backend grading runtime onto an explicit, benchmarked provider contract before promoting the nightly production path.
+
+Subtasks (brief):
+- Add an official SDK-backed direct OpenAI provider path to the backend runtime.
+- Keep OpenRouter support explicit instead of hiding it behind a generic compatibility mode.
+- Benchmark direct OpenAI and OpenRouter paths on the same replay corpus through the backend orchestration surface.
+- Finalize rollout, rollback, and operator runbook steps for production cutover.
 
 ## Phase Dependencies
 - `Phase 1 -> Phase 2 -> Phase 3`
@@ -114,7 +123,8 @@ Subtasks (brief):
 - `Phase 5` depends on `Phase 3` (and may consume execution outputs standardized in `Phase 4`)
 - `Phase 6` depends on `Phase 2` and `Phase 3`
 - `Phase 7` depends on `Phase 5` and `Phase 6` (and reuses Phase 4 freshness semantics)
-- `Phase 8` closes the milestone after implementation phases complete
+- `Phase 8` depends on `Phase 7`
+- `Phase 9` depends on `Phase 8`
 
 Exact gate/stream parallelism will be defined in each phase document.
 

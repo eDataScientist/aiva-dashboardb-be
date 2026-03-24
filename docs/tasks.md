@@ -79,7 +79,7 @@ Last Updated: `2026-03-02` (Post-completion Stream A review: `P1.2.2` approved; 
 
 ## Milestone 2: AI Grading, Monitoring, and Access Foundations
 Status: `IN PROGRESS`
-Last Updated: `2026-03-23` (Phase 8 deployment hardening patch prepared for OpenRouter nightly grading; provider/env/docs alignment updated while `P2.7.18` remains `IN REVIEW`)
+Last Updated: `2026-03-24` (Phase 9 planned; `P2.9.1` through `P2.9.16` added to formalize direct OpenAI vs OpenRouter cutover work while `P2.7.18` remains `IN REVIEW`)
 
 ## Phase 1 - Gate 1.0 (Shared Milestone 2 Data Contracts)
 - [x] `P2.1.1 - Design - Finalize customer-day grade grain and canonical identity contract - Gate (Independent)`
@@ -309,3 +309,32 @@ Phase dependency note: Phase 7 should compose Phase 5 graded metrics, Phase 6 mo
 - [x] `P2.7.16 - Test - Add dashboard API tests for auth, validation, empty-state, and populated payload contracts - Stream D (Dependent)` (`P2.7.15`) - `DONE` (`EDA-178`; rereview approved `2026-03-17` after adding over-max and non-positive `worst_performers_limit` regressions asserting `invalid_limit`; `tests/test_grading_dashboard_api.py` (new); 17 tests cover auth, role access, date-window and `invalid_limit` validation, empty-state, and populated-state contracts for all three view endpoints)
 - [x] `P2.7.17 - QA - Run compile and targeted pytest verification for dashboard scope - Stream D (Dependent)` (`P2.7.16`) - `DONE` (`EDA-179`; rereview approved `2026-03-17` after `EDA-178` invalid-limit fix landed; compile passed; `pytest` full dashboard scope passed `99 passed`)
 - [x] `P2.7.18 - Docs - Update task/progress docs with Phase 7 execution notes and Phase 8 handoff risks - Stream D (Dependent)` (`P2.7.17`) - `IN REVIEW` (`EDA-180`; `docs/tasks.md`, `docs/project-progress.md`, `docs/milestone-2/m2-phase-7.md` synchronized with Stream D review-fix outcomes and Phase 8 handoff state)
+
+## Phase 9 - Production Cutover
+Phase dependency note: Phase 9 follows Phase 8 deployment readiness and hardens the grading runtime so nightly production runs use an explicit, benchmarked provider path with a documented rollout and rollback.
+
+## Gate 9.0
+- [ ] `P2.9.1 - Design - Finalize provider acceptance criteria and comparison corpus - Gate (Independent)`
+- [ ] `P2.9.2 - DB - Validate no migration path and runtime metadata capture strategy - Gate (Dependent)` (`P2.9.1`)
+- [ ] `P2.9.3 - Config - Define explicit provider enums, env contract, and cutover defaults - Gate (Dependent)` (`P2.9.1`)
+- [ ] `P2.9.4 - API - Confirm no-route-change policy and required run-observability contract - Gate (Dependent)` (`P2.9.1`, `P2.9.2`, `P2.9.3`)
+- [ ] `P2.9.5 - Service - Finalize provider abstraction and transport rollout architecture - Gate (Dependent)` (`P2.9.2`, `P2.9.3`, `P2.9.4`)
+
+## Stream A (Provider Transport Refactor)
+- [ ] `P2.9.6 - Service - Add official OpenAI SDK transport for direct OpenAI grading - Stream A (Dependent)` (`P2.9.5`)
+- [ ] `P2.9.7 - Service - Isolate explicit OpenRouter transport and provider-specific request rules - Stream A (Dependent)` (`P2.9.6`)
+- [ ] `P2.9.8 - Test - Add provider adapter failure-classification and retry tests - Stream A (Dependent)` (`P2.9.7`)
+
+## Stream B (Orchestration, Scheduler, and Config Cutover)
+- [ ] `P2.9.9 - Service - Wire explicit provider selection through grading pipeline, batch runs, and scheduler snapshots - Stream B (Dependent)` (`P2.9.5`, `P2.9.6`, `P2.9.7`)
+- [ ] `P2.9.10 - Config - Update deployment defaults, env docs, and startup validation for direct OpenAI cutover - Stream B (Dependent)` (`P2.9.3`, `P2.9.9`)
+- [ ] `P2.9.11 - Test - Add replay harness coverage for backend runtime direct OpenAI and OpenRouter paths - Stream B (Dependent)` (`P2.9.9`, `P2.9.10`)
+
+## Stream C (Reliability Benchmark and Rollout Evidence)
+- [ ] `P2.9.12 - QA - Build historical failure corpus and benchmark providers on the same transcript set - Stream C (Dependent)` (`P2.9.1`, `P2.9.11`)
+- [ ] `P2.9.13 - QA - Run controlled dry-run/nightly validation and define go-no-go threshold - Stream C (Dependent)` (`P2.9.9`, `P2.9.12`)
+- [ ] `P2.9.14 - Docs - Update provider runbook, rollout steps, and rollback procedures - Stream C (Dependent)` (`P2.9.10`, `P2.9.13`)
+
+## Stream D (Final Verification and Handoff)
+- [ ] `P2.9.15 - QA - Run compile, full pytest, and provider replay verification for the reliability refactor - Stream D (Dependent)` (`P2.9.8`, `P2.9.11`, `P2.9.13`)
+- [ ] `P2.9.16 - Docs - Update task/progress docs with cutover outcome and residual risks - Stream D (Dependent)` (`P2.9.15`)
