@@ -1,67 +1,47 @@
-# Milestone 2 - Phase 9 Plan
+# Milestone 2 - Phase 9 Plan: OpenAI SDK Transport Cutover
 
 ## Goals
-- Replace the current ambiguous production grading runtime with an explicit, measurable provider strategy that favors reliability over nominal provider flexibility.
-- Promote a first-class direct OpenAI runtime path in the backend instead of keeping the official SDK isolated in the legacy export script.
-- Preserve the existing customer-day grading, run ledger, scheduler, and API contracts unless a clear operational gap requires additive telemetry.
-- Leave deployment in a state where nightly grading can be cut over safely with a documented replay benchmark, rollout sequence, and rollback path.
+- Replace the custom `httpx`-based grading transport with the official OpenAI SDK (`AsyncOpenAI`) so the backend runtime uses the same proven client stack as the legacy export script.
+- Preserve the existing `openai_compatible` provider enum, config contract, scheduler, batch execution, and API surface -- the change is internal to the transport layer.
+- Update production deployment defaults to use direct OpenAI (`gpt-4o-mini`) instead of OpenRouter + Minimax, based on replay evidence showing 10/10 vs 0-3/10 reliability.
+- Leave deployment in a state where rollback to OpenRouter is a config-only change (swap `GRADING_BASE_URL` and `GRADING_MODEL`).
 
 ## Problem Statement
-- The backend runtime currently grades through `app/services/grading_provider.py`, which uses a custom `httpx` `openai_compatible` transport.
-- Production was configured around OpenRouter plus `minimax/minimax-m2.5`, so the app never adopted the direct OpenAI SDK path that already exists in `generate_conversation_grades.py`.
-- Recent replay evidence shows a material reliability gap on the same nightly-failure conversations:
-  - app runtime path + OpenRouter/Minimax replay: one conversation succeeded `3/10`, one succeeded `0/10`
-  - legacy script path + direct OpenAI `gpt-4o-mini` replay: both conversations succeeded `10/10`
-- That evidence is directionally strong but not yet sufficient to justify a blind production swap because two variables changed at once:
-  - transport/client stack (`httpx` vs `AsyncOpenAI`)
-  - provider/model (`OpenRouter + Minimax` vs direct OpenAI + `gpt-4o-mini`)
+- The backend runtime grades through `app/services/grading_provider.py`, which uses a custom `httpx` transport (`_default_openai_compatible_transport`) to make OpenAI-compatible chat completion requests.
+- The legacy export script (`generate_conversation_grades.py`) uses the official `openai` SDK (`AsyncOpenAI`) and has been consistently reliable.
+- Replay evidence on the same nightly-failure conversations:
+  - Backend runtime (`httpx` + OpenRouter/Minimax): one conversation succeeded 3/10, one succeeded 0/10.
+  - Legacy script (`AsyncOpenAI` + direct OpenAI `gpt-4o-mini`): both conversations succeeded 10/10.
+- The reliability gap is attributable to two variables: the transport layer (`httpx` vs `AsyncOpenAI`) and the provider/model (OpenRouter + Minimax vs direct OpenAI + `gpt-4o-mini`). This phase addresses both by adopting the SDK and updating the recommended production model.
+- The OpenAI SDK natively supports custom `base_url`, so OpenRouter remains usable through the same `AsyncOpenAI` client without a separate transport implementation.
 
 ## Planning Analysis (Required Order)
 
 ### 1) Data Models
-- `conversation_grades` remains the canonical grade fact table.
-  - No score/rubric schema changes are required for this revision.
-  - The revision should not change the customer-day grain, identity model, or upsert behavior.
-- `grading_runs` and `grading_run_items` remain the operational evidence source.
-  - Existing `settings_snapshot`, run counters, and error fields should be reused first.
-  - Additional persistent metadata should only be introduced if current run snapshots cannot capture the active provider, model, transport, timeout, and retry policy clearly enough for incident review.
-- The replay corpus should be built from existing raw chats plus failed `grading_run_items`, not from a new staging table.
+- No schema changes. `conversation_grades`, `grading_runs`, and `grading_run_items` remain unchanged.
+- `grading_runs` already persists `provider`, `model`, and `prompt_version` per run, which is sufficient to distinguish pre- and post-cutover runs.
 
 ### 2) Migration
-- Default path: no migration.
-- Gate review should explicitly confirm whether current run snapshots can capture:
-  - provider family
-  - transport implementation
-  - model
-  - base URL
-  - timeout/retry policy
-- If those values can be stored in the existing snapshot payload, no Alembic change should be added.
-- A migration is only justified if provider-comparison telemetry cannot be made reviewable without new bounded columns or indexes.
+- No migration required. The existing `grading_runs` columns capture all runtime context needed for incident review.
 
 ### 3) Dependencies
-- The runtime should treat the official `openai` SDK as a production dependency, not as a script-only dependency.
-- The backend should keep one provider abstraction, but it should expose explicit provider families instead of one overloaded `openai_compatible` mode.
-- The current custom `httpx` path may remain as:
-  - a compatibility transport for OpenRouter, or
-  - a fallback only
-- The scheduler, manual backfill flow, and run history APIs should continue to call the same orchestration surface after the provider refactor.
+- The `openai` SDK becomes a production dependency in `requirements.txt` (currently only used by the standalone export script).
+- `httpx` remains a dependency for other parts of the application but is no longer used by the grading transport.
+- The `GradingProvider` protocol, `GradingProviderRequest` dataclass, `MockGradingTransport` protocol, retry wrapper, and mock transport in `grading_provider.py` are unchanged.
+- The scheduler, manual backfill flow, batch execution, and all downstream APIs continue to call the same orchestration surface.
 
 ### 4) Configuration
-- The revision should replace the ambiguous production contract with explicit settings:
-  - direct OpenAI provider mode
-  - OpenRouter provider mode
-  - provider-specific API key/base URL/header rules
-  - explicit retry and timeout settings
-- Startup validation should fail fast on invalid combinations such as:
-  - OpenAI provider with an OpenRouter-only model
-  - OpenRouter provider without a base URL
-  - scheduler enabled on mock or unsupported provider combinations
-- Cutover config should default production toward the direct OpenAI path once replay evidence is approved.
+- The `GRADING_PROVIDER` enum values (`mock`, `openai_compatible`) remain the same. No new provider families are introduced -- the SDK handles both direct OpenAI and OpenRouter via `base_url`.
+- Existing config fields used by the new transport:
+  - `GRADING_API_KEY` / `OPENROUTER_API_KEY` -- passed to `AsyncOpenAI(api_key=...)`
+  - `GRADING_BASE_URL` -- passed to `AsyncOpenAI(base_url=...)`. Defaults to `None` (SDK default: `https://api.openai.com/v1`).
+  - `GRADING_MODEL` -- passed to `client.chat.completions.create(model=...)`
+  - `GRADING_REQUEST_TIMEOUT_SECONDS` -- passed to `AsyncOpenAI(timeout=...)`
+- Production deployment recommendation changes from OpenRouter + Minimax to direct OpenAI + `gpt-4o-mini`.
+- Rollback to OpenRouter requires only setting `GRADING_BASE_URL` and `GRADING_MODEL` back to OpenRouter values.
 
 ### 5) Endpoints
-- No public route additions are required for the first pass.
-- Existing grading run trigger/history endpoints should remain stable.
-- If the current run-detail response cannot expose enough runtime context for operations, Phase 8 Revision may add additive observability fields to existing run payloads, but no route split is planned.
+- No endpoint changes. All existing grading run trigger, history, metrics, monitoring, and dashboard endpoints remain stable.
 
 ## Dependencies
 - Phase dependency: `Milestone 2 Phase 8 deployment readiness -> Milestone 2 Phase 9`
@@ -71,65 +51,110 @@
   - Phase 4 batch execution, scheduler, and run ledger
   - Phase 5+ APIs that consume `conversation_grades` and `grading_runs`
 - Downstream impact:
-  - nightly scheduler reliability
-  - manual backfill/operator reruns
-  - deployment documentation and provider secret handling
+  - Nightly scheduler reliability (primary motivation)
+  - Manual backfill/operator reruns (same transport improvement)
 
-## Revision Success Criteria
-- Backend runtime supports a first-class direct OpenAI provider path using the official SDK.
-- OpenRouter remains explicit rather than being hidden behind a generic compatibility mode.
-- A controlled replay corpus compares direct OpenAI and OpenRouter paths using the same backend orchestration contract.
-- Production cutover is gated by measured replay results, not by anecdotal single-run success.
-- Nightly scheduler rollout and rollback steps are documented and reversible.
+## Phase 9 Success Criteria
+- Backend grading transport uses `AsyncOpenAI` from the official `openai` SDK instead of raw `httpx`.
+- All existing grading pipeline, batch, scheduler, and API tests pass without modification (or with minimal transport-mock adjustments).
+- Production deployment docs recommend direct OpenAI + `gpt-4o-mini` with documented rollback to OpenRouter.
+- Nightly grading run completes successfully on the new transport.
 
-## Gate 9.0 - Provider Contract and Cutover Baseline
+## Test Impact Analysis
+
+### Transport layer boundary
+The grading provider factory (`build_grading_provider`) accepts optional injection parameters: `mock_transport` and `openai_transport`. All existing tests inject fake transport functions through these parameters or use the built-in mock provider. No test directly instantiates `httpx.AsyncClient` or calls the real `_default_openai_compatible_transport`.
+
+This means the transport swap is behind the injection boundary -- the `_default_openai_compatible_transport` function is replaced, but no test calls it directly.
+
+### Test files unaffected (no changes needed)
+These test files operate above the transport layer and will not require any modification:
+
+| File | Tests | Why unaffected |
+|---|---|---|
+| `test_grading_pipeline.py` | 8 | Uses `build_grading_provider(settings=mock)` or inline async functions as providers. Never touches the real transport. |
+| `test_grading_batch.py` | 17 | Mocks at the pipeline/extraction level, not the transport level. Uses mock provider settings. |
+| `test_grading_run_services.py` | 8 | Tests run service logic and permissions. Provider is config-only. |
+| `test_grading_scheduler.py` | 3 | Mocks the batch runner (`AsyncMock`). No transport involvement. |
+| `test_grading_config.py` | 17 | Tests `Settings` validation. Provider enum values (`mock`, `openai_compatible`) are unchanged. |
+| `test_grading_extraction.py` | -- | Tests transcript extraction from raw chats. No provider involvement. |
+| `test_grading_prompt.py` | -- | Tests prompt building. No provider involvement. |
+| `test_grading_prompt_assets.py` | -- | Tests prompt-pack file validation. No provider involvement. |
+| `test_grading_schemas.py` | -- | Tests Pydantic schemas. No provider involvement. |
+| `test_grading_metrics*.py` | -- | Tests metrics queries. No provider involvement. |
+| `test_grading_monitoring*.py` | -- | Tests monitoring queries. No provider involvement. |
+| `test_grading_dashboard*.py` | -- | Tests dashboard queries. No provider involvement. |
+| `test_grading_runs_api.py` | -- | Tests API routes. No provider involvement. |
+
+### Tests to review (may need adjustment)
+These tests in `test_grading_parser.py` inject fake transports via `build_grading_provider(openai_transport=...)`:
+
+| Test | What it does | Impact |
+|---|---|---|
+| `test_build_grading_provider_surfaces_openai_transport_results` | Injects `fake_openai_transport(request, settings) -> str` via `openai_transport=` parameter. Asserts the provider returns the fake's output and that `settings.grading_api_key` was passed through. | **No change needed** if the `OpenAICompatibleTransport` protocol signature `(request, settings) -> str` is preserved. The test never touches `httpx` or `AsyncOpenAI` -- it injects its own function. |
+| `test_build_grading_provider_uses_openrouter_api_key_alias` | Same injection pattern. Asserts `openrouter_api_key` resolves to `grading_api_key` and `base_url` is passed through settings. | **No change needed** -- same reasoning. |
+| `test_build_grading_provider_passes_prompt_pack_metadata_to_openai_transport` | Same injection pattern. Asserts prompt metadata (`prompt_key`, `prompt_version`, `template_file`, `prompt_sequence`) is passed through to the transport. | **No change needed** -- same reasoning. |
+| `test_build_grading_provider_retries_mock_transport_failures` | Injects `flaky_transport` via `mock_transport=` parameter. Tests retry logic with `GradingProviderError`. | **No change needed** -- mock transport path is untouched. |
+
+### Key design decision for tests
+The `OpenAICompatibleTransport` protocol in `grading_provider.py:39-44` defines the injection signature:
+
+```python
+class OpenAICompatibleTransport(Protocol):
+    async def __call__(
+        self, request: GradingProviderRequest, settings: Settings,
+    ) -> str: ...
+```
+
+**This protocol must be preserved.** The implementation behind `_default_openai_compatible_transport` changes from `httpx` to `AsyncOpenAI`, but the factory's `openai_transport=` injection parameter keeps the same signature. This means:
+- All 3 existing `openai_transport=` tests pass without changes.
+- All 1 existing `mock_transport=` retry test passes without changes.
+- The 10 parser-only tests in the same file are completely unrelated to transport.
+
+### New tests to add
+Phase 9 should add targeted tests for the new `AsyncOpenAI`-backed default transport to cover behaviors that were previously covered by the `httpx` implementation:
+
+| New test | Purpose |
+|---|---|
+| `test_default_openai_transport_raises_provider_error_on_timeout` | Verify `AsyncOpenAI` timeout exceptions are caught and wrapped as `GradingProviderError`. |
+| `test_default_openai_transport_raises_provider_error_on_http_error` | Verify SDK HTTP status errors (e.g. 429, 500) are caught and wrapped as `GradingProviderError`. |
+| `test_default_openai_transport_raises_provider_error_on_empty_content` | Verify empty completion content raises `GradingProviderError`. |
+| `test_default_openai_transport_raises_provider_error_on_unexpected_payload` | Verify malformed SDK response raises `GradingProviderError`. |
+| `test_default_openai_transport_passes_base_url_when_configured` | Verify `AsyncOpenAI(base_url=...)` is called when `GRADING_BASE_URL` is set (OpenRouter path). |
+| `test_default_openai_transport_omits_base_url_when_not_configured` | Verify `AsyncOpenAI()` is called without `base_url` when `GRADING_BASE_URL` is not set (direct OpenAI path). |
+| `test_default_openai_transport_sends_json_response_format` | Verify `response_format={"type": "json_object"}` is passed to `client.chat.completions.create()`. |
+
+These tests should mock `AsyncOpenAI` at the class level (e.g. `unittest.mock.patch("app.services.grading_provider.AsyncOpenAI")`) to avoid real API calls while verifying the SDK is wired correctly.
+
+### Test summary
+- **Existing tests that need changes:** 0
+- **Existing tests unaffected:** all (the `OpenAICompatibleTransport` protocol injection boundary isolates them)
+- **New tests to add:** 7 (covering the `AsyncOpenAI` default transport error handling, config wiring, and request shape)
+
+## Gate 9.0 - Transport Swap and Test Coverage
 
 | Task ID | Title | Goal / Acceptance Criteria | Dependencies | Files to Modify/Create (Expected) | Testing / Validation |
 |---|---|---|---|---|---|
-| 9.0.1 | `P2.9.1 - Design - Finalize provider acceptance criteria and comparison corpus - Gate (Independent)` | Define what counts as a production-worthy provider path, including replay corpus composition, success/error thresholds, and acceptable rollback triggers. | None | `docs/milestone-2/m2-phase-9.md`, `docs/milestone-2/milestone-notes.md` | Review checklist confirms transport/provider variables are separated and cutover criteria are explicit. |
-| 9.0.2 | `P2.9.2 - DB - Validate no migration path and runtime metadata capture strategy - Gate (Dependent)` | Confirm whether current run snapshots can capture provider/model/transport/runtime settings without additive schema work; document the no-migration or additive-migration decision. | `P2.9.1` | `docs/milestone-2/m2-phase-9.md`, `app/models/grading_runs.py`, `alembic/versions/*.py` (conditional) | Schema review or migration smoke if a revision is required. |
-| 9.0.3 | `P2.9.3 - Config - Define explicit provider enums, env contract, and cutover defaults - Gate (Dependent)` | Replace `openai_compatible` ambiguity with explicit provider families and validate safe production defaults for direct OpenAI and OpenRouter. | `P2.9.1` | `app/core/constants.py`, `app/core/config.py`, `.env.example`, `tests/test_grading_config.py` | Config validation tests for valid/invalid provider combinations and scheduler safety. |
-| 9.0.4 | `P2.9.4 - API - Confirm no-route-change policy and required run-observability contract - Gate (Dependent)` | Freeze the external route surface unless additive run-detail metadata is required, and define the minimum operator-visible runtime context. | `P2.9.1`, `P2.9.2`, `P2.9.3` | `docs/milestone-2/m2-phase-9.md`, `app/schemas/grading_runs.py` (conditional), `tests/test_grading_runs_api.py` (conditional) | Schema/API review confirms either no route change or bounded additive observability. |
-| 9.0.5 | `P2.9.5 - Service - Finalize provider abstraction and transport rollout architecture - Gate (Dependent)` | Lock the service boundary so Streams A-C can implement provider transports, orchestration wiring, and replay validation in parallel without conflicting interfaces. | `P2.9.2`, `P2.9.3`, `P2.9.4` | `app/services/grading_provider.py`, `app/services/__init__.py`, `tests/test_grading_parser.py`, `tests/test_grading_pipeline.py` | Import/compile smoke plus contract review for provider abstraction shape. |
+| 9.0.1 | `P2.9.1 - Deps - Add openai SDK as a production dependency` | Add `openai` to `requirements.txt` as a runtime dependency. Confirm it installs cleanly alongside existing deps and inside the Docker image. | None | `requirements.txt`, `Dockerfile` (rebuild verification) | `pip install -r requirements.txt` succeeds; `python -c "from openai import AsyncOpenAI"` succeeds; `docker compose build` succeeds. |
+| 9.0.2 | `P2.9.2 - Service - Replace httpx transport with AsyncOpenAI in grading_provider.py` | Replace `_default_openai_compatible_transport` with an implementation that uses `AsyncOpenAI` for chat completions. Preserve the `OpenAICompatibleTransport` protocol signature so the `openai_transport=` injection parameter remains compatible. Preserve error classification (`GradingProviderError` for timeouts, HTTP errors, empty payloads, non-string content). Use `base_url` from settings when present (OpenRouter), omit it for direct OpenAI. | `P2.9.1` | `app/services/grading_provider.py` | `python -m compileall app`; all existing tests in `test_grading_parser.py` pass unchanged. |
+| 9.0.3 | `P2.9.3 - Test - Add AsyncOpenAI default transport tests` | Add 7 new tests covering the `AsyncOpenAI`-backed default transport: timeout error wrapping, HTTP error wrapping, empty content handling, unexpected payload handling, `base_url` presence/absence, and `response_format` passthrough. Mock `AsyncOpenAI` at the class level to avoid real API calls. | `P2.9.2` | `tests/test_grading_parser.py` | `pytest tests/test_grading_parser.py -q` passes with new transport coverage. |
+| 9.0.4 | `P2.9.4 - Test - Run full test suite and compile check` | Confirm the transport swap does not break any existing grading pipeline, batch execution, scheduler, metrics, monitoring, or dashboard tests. | `P2.9.3` | None (test-only) | `python -m compileall app tests`; `pytest -q` -- all tests pass. |
 
-## Stream A - Provider Transport Refactor
-
-| Task ID | Title | Goal / Acceptance Criteria | Dependencies | Files to Modify/Create (Expected) | Testing / Validation |
-|---|---|---|---|---|---|
-| A.1 | `P2.9.6 - Service - Add official OpenAI SDK transport for direct OpenAI grading - Stream A (Dependent)` | Introduce an official SDK-backed transport used by the backend runtime for direct OpenAI requests. | `P2.9.5` | `app/services/grading_provider.py`, `requirements.txt`, `tests/test_grading_parser.py`, `tests/test_grading_pipeline.py` | Deterministic transport tests plus compile coverage. |
-| A.2 | `P2.9.7 - Service - Isolate explicit OpenRouter transport and provider-specific request rules - Stream A (Dependent)` | Keep OpenRouter support explicit, including provider-specific base URL and header handling, without conflating it with direct OpenAI. | `P2.9.6` | `app/services/grading_provider.py`, `app/core/config.py`, `.env.example`, `tests/test_grading_config.py`, `tests/test_grading_parser.py` | Provider-selection tests and request-shape assertions. |
-| A.3 | `P2.9.8 - Test - Add provider adapter failure-classification and retry tests - Stream A (Dependent)` | Lock transport-specific timeout, empty-payload, parse, and retry behavior so production failures stay classifiable after the refactor. | `P2.9.7` | `tests/test_grading_parser.py`, `tests/test_grading_pipeline.py`, `tests/test_grading_config.py` | Targeted pytest for transport and pipeline slices. |
-
-## Stream B - Orchestration, Scheduler, and Config Cutover
+## Gate 9.1 - Deployment Update and Production Verification
 
 | Task ID | Title | Goal / Acceptance Criteria | Dependencies | Files to Modify/Create (Expected) | Testing / Validation |
 |---|---|---|---|---|---|
-| B.1 | `P2.9.9 - Service - Wire explicit provider selection through grading pipeline, batch runs, and scheduler snapshots - Stream B (Dependent)` | Ensure manual runs and nightly runs use the new provider contract and persist enough runtime context for later incident review. | `P2.9.5`, `P2.9.6`, `P2.9.7` | `app/services/grading_pipeline.py`, `app/services/grading_batch.py`, `app/services/grading_runs.py`, `tests/test_grading_batch.py`, `tests/test_grading_runs.py`, `tests/test_grading_pipeline.py` | Service tests covering manual and scheduled paths under explicit providers. |
-| B.2 | `P2.9.10 - Config - Update deployment defaults, env docs, and startup validation for direct OpenAI cutover - Stream B (Dependent)` | Make the safe production profile explicit, including direct OpenAI defaults, OpenRouter fallback semantics, and invalid-combination startup failures. | `P2.9.3`, `P2.9.9` | `.env.example`, `docs/milestone-2/m2-phase-8.md`, `docs/milestone-2/m2-phase-9.md`, `tests/test_grading_config.py` | Config tests plus docs review against the intended production profile. |
-| B.3 | `P2.9.11 - Test - Add replay harness coverage for backend runtime direct OpenAI and OpenRouter paths - Stream B (Dependent)` | Turn the ad hoc replay investigation into a repeatable backend-side validation harness that exercises the same orchestration entry points under both provider families. | `P2.9.9`, `P2.9.10` | `tests/` or `scripts/` replay harness files, `docs/milestone-2/m2-phase-9.md` | Repeatable replay command documented with captured success/failure breakdowns. |
+| 9.1.1 | `P2.9.5 - Config - Update deployment docs and .env.example for direct OpenAI production profile` | Update Phase 8 deployment docs and `.env.example` to recommend direct OpenAI + `gpt-4o-mini` as the production profile. Document rollback to OpenRouter as a config-only change. Remove the OpenRouter-specific production profile as the primary recommendation. | `P2.9.4` | `.env.example`, `docs/milestone-2/m2-phase-8.md`, `docs/milestone-2/m2-phase-9.md` | Docs review confirms the production profile and rollback instructions are clear. |
+| 9.1.2 | `P2.9.6 - QA - Deploy, run production verification, and update progress docs` | Rebuild and redeploy the Docker image with the OpenAI SDK transport. Trigger or observe a nightly grading run. Confirm successful completion. Update task and progress docs. | `P2.9.5` | `docs/tasks.md`, `docs/project-progress.md`, `docs/milestone-2/m2-phase-9.md` | Deployed container starts cleanly; at least one grading run completes successfully on the new transport; docs reflect the cutover outcome. |
 
-## Stream C - Reliability Benchmark and Rollout Evidence
+## Execution Order
+1. Gate 9.0: Add the SDK dependency, swap the transport, add new transport tests, run full suite. Sequential within the gate.
+2. Gate 9.1: Update deployment docs, deploy and verify in production. Sequential within the gate.
 
-| Task ID | Title | Goal / Acceptance Criteria | Dependencies | Files to Modify/Create (Expected) | Testing / Validation |
-|---|---|---|---|---|---|
-| C.1 | `P2.9.12 - QA - Build historical failure corpus and benchmark providers on the same transcript set - Stream C (Dependent)` | Create a representative replay set from nightly failures, backlog failures, and successful controls so provider comparisons are statistically more useful than a two-conversation spot check. | `P2.9.1`, `P2.9.11` | `exports/` benchmark artifacts, `docs/milestone-2/m2-phase-9.md` | Benchmark report includes success rate, provider error rate, parse error rate, and run-time distribution by provider. |
-| C.2 | `P2.9.13 - QA - Run controlled dry-run/nightly validation and define go-no-go threshold - Stream C (Dependent)` | Execute the selected direct OpenAI runtime in a production-like dry run before scheduler cutover and document the exact promotion/rollback criteria. | `P2.9.9`, `P2.9.12` | `docs/milestone-2/m2-phase-9.md`, deployment runbook notes | Validation checklist covers replay, one-off manual run, and first scheduled-run observation. |
-| C.3 | `P2.9.14 - Docs - Update provider runbook, rollout steps, and rollback procedures - Stream C (Dependent)` | Produce the operator-facing instructions for secret management, redeploy, log verification, and emergency fallback between direct OpenAI and OpenRouter. | `P2.9.10`, `P2.9.13` | `docs/milestone-2/m2-phase-8.md`, `docs/milestone-2/m2-phase-9.md`, `docs/project-progress.md` | Runbook review confirms rollout is executable without tribal knowledge. |
-
-## Stream D - Final Verification and Handoff
-
-| Task ID | Title | Goal / Acceptance Criteria | Dependencies | Files to Modify/Create (Expected) | Testing / Validation |
-|---|---|---|---|---|---|
-| D.1 | `P2.9.15 - QA - Run compile, full pytest, and provider replay verification for the reliability refactor - Stream D (Dependent)` | Verify the refactor end to end before any production cutover recommendation is made. | `P2.9.8`, `P2.9.11`, `P2.9.13` | `app/`, `tests/`, benchmark artifacts | `python -m compileall app tests`, `pytest -q`, and the documented replay benchmark all pass at the agreed threshold. |
-| D.2 | `P2.9.16 - Docs - Update task/progress docs with cutover outcome and residual risks - Stream D (Dependent)` | Synchronize the final provider decision, validation evidence, and any residual operational risks into the canonical project docs. | `P2.9.15` | `docs/tasks.md`, `docs/project-progress.md`, `docs/milestone-2/m2-phase-9.md` | Docs review confirms the milestone handoff reflects the actual rollout state. |
-
-## Recommended Execution Order
-1. Complete Gate 9.0R to lock the provider contract and no-migration decision.
-2. Run Stream A and Stream B in parallel once the transport abstraction is frozen.
-3. Use Stream C to benchmark the explicit provider paths on the same corpus before changing production defaults.
-4. Only after Stream C evidence is acceptable should Stream D recommend a production cutover.
-
-## Immediate Review Notes
-- The current `10/10` replay on direct OpenAI should be treated as a strong signal, not a final production readiness proof.
-- The corrective action is not "swap to the script"; it is "move the backend runtime onto an explicit, measurable provider architecture and promote the better path once the backend replay corpus confirms it."
-- The highest-risk anti-pattern is keeping one generic `openai_compatible` mode while silently pointing it at different providers; this revision should remove that ambiguity.
+## Rollback Path
+- If the new transport causes production failures, rollback is a config change:
+  1. Set `GRADING_BASE_URL=https://openrouter.ai/api/v1`
+  2. Set `GRADING_MODEL=minimax/minimax-m2.5`
+  3. Set `GRADING_API_KEY` to the OpenRouter key
+  4. Restart the container: `docker compose build && docker compose up -d`
+- The `AsyncOpenAI` client handles OpenRouter identically via `base_url`, so no code rollback is needed.

@@ -107,14 +107,15 @@ Subtasks (brief):
 - Run milestone QA verification (migrations, runtime checks, API behavior).
 - Finalize handoff-ready documentation and checklist status.
 
-## Phase 9 - Provider Cutover
-Objective: realign the backend grading runtime onto an explicit, benchmarked provider contract before promoting the nightly production path.
+## Phase 9 - OpenAI SDK Transport Cutover
+Objective: Replace the custom `httpx` grading transport with the official OpenAI SDK (`AsyncOpenAI`) and update production defaults to direct OpenAI + `gpt-4o-mini`.
 
 Subtasks (brief):
-- Add an official SDK-backed direct OpenAI provider path to the backend runtime.
-- Keep OpenRouter support explicit instead of hiding it behind a generic compatibility mode.
-- Benchmark direct OpenAI and OpenRouter paths on the same replay corpus through the backend orchestration surface.
-- Finalize rollout, rollback, and operator runbook steps for production cutover.
+- Add the `openai` SDK as a production dependency.
+- Replace the `httpx`-based `_default_openai_compatible_transport` with an `AsyncOpenAI`-backed implementation.
+- Update transport tests for the new client mock shape.
+- Update deployment docs and `.env.example` for the direct OpenAI production profile.
+- Deploy, verify a successful nightly grading run, and document the cutover.
 
 ## Phase Dependencies
 - `Phase 1 -> Phase 2 -> Phase 3`
