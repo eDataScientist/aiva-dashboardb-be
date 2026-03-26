@@ -3,11 +3,16 @@ from __future__ import annotations
 from typing import Final
 
 GRADING_PROVIDER_MOCK: Final[str] = "mock"
+GRADING_PROVIDER_OPENAI: Final[str] = "openai"
+GRADING_PROVIDER_OPENROUTER: Final[str] = "openrouter"
 GRADING_PROVIDER_OPENAI_COMPATIBLE: Final[str] = "openai_compatible"
 GRADING_SUPPORTED_PROVIDERS: Final[tuple[str, ...]] = (
     GRADING_PROVIDER_MOCK,
+    GRADING_PROVIDER_OPENAI,
+    GRADING_PROVIDER_OPENROUTER,
     GRADING_PROVIDER_OPENAI_COMPATIBLE,
 )
+GRADING_OPENROUTER_BASE_URL: Final[str] = "https://openrouter.ai/api/v1"
 GRADING_BATCH_TIMEZONE: Final[str] = "Asia/Dubai"
 GRADING_RUN_STALE_RECOVERY_ERROR_MESSAGE: Final[str] = (
     "Recovered stale grading run after scheduler timeout."

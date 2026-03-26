@@ -140,7 +140,10 @@ def _settings(
     *,
     grading_provider: str,
     grading_api_key: str | None = None,
+    openai_api_key: str | None = None,
+    openai_model: str | None = None,
     openrouter_api_key: str | None = None,
+    openrouter_model: str | None = None,
     grading_base_url: str | None = None,
     grading_model: str | None = None,
 ) -> Settings:
@@ -155,8 +158,14 @@ def _settings(
     }
     if grading_api_key is not None:
         kwargs["grading_api_key"] = grading_api_key
+    if openai_api_key is not None:
+        kwargs["openai_api_key"] = openai_api_key
+    if openai_model is not None:
+        kwargs["openai_model"] = openai_model
     if openrouter_api_key is not None:
         kwargs["openrouter_api_key"] = openrouter_api_key
+    if openrouter_model is not None:
+        kwargs["openrouter_model"] = openrouter_model
     if grading_base_url is not None:
         kwargs["grading_base_url"] = grading_base_url
     return Settings(**kwargs)
@@ -557,6 +566,74 @@ async def test_build_grading_provider_passes_prompt_pack_metadata_to_openai_tran
 
 
 # ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_build_grading_provider_routes_openai_provider_to_transport() -> None:
+    captured: dict[str, object] = {}
+
+    async def fake_openai_transport(
+        request: GradingProviderRequest,
+        settings: Settings,
+    ) -> str:
+        captured["provider"] = settings.grading_provider
+        captured["api_key"] = settings.grading_api_key
+        captured["model"] = settings.grading_model
+        captured["base_url"] = settings.grading_base_url
+        return '{"ok": true}'
+
+    provider = build_grading_provider(
+        settings=_settings(
+            grading_provider="openai",
+            openai_api_key="sk-openai-key",
+            openai_model="gpt-5.4-mini",
+        ),
+        openai_transport=fake_openai_transport,
+    )
+
+    raw_output = await provider(_provider_request())
+
+    assert raw_output == '{"ok": true}'
+    assert captured == {
+        "provider": "openai",
+        "api_key": "sk-openai-key",
+        "model": "gpt-5.4-mini",
+        "base_url": None,
+    }
+
+
+@pytest.mark.asyncio
+async def test_build_grading_provider_routes_openrouter_provider_to_transport() -> None:
+    captured: dict[str, object] = {}
+
+    async def fake_openai_transport(
+        request: GradingProviderRequest,
+        settings: Settings,
+    ) -> str:
+        captured["provider"] = settings.grading_provider
+        captured["api_key"] = settings.grading_api_key
+        captured["model"] = settings.grading_model
+        captured["base_url"] = settings.grading_base_url
+        return '{"ok": true}'
+
+    provider = build_grading_provider(
+        settings=_settings(
+            grading_provider="openrouter",
+            openrouter_api_key="sk-or-key",
+            openrouter_model="minimax/minimax-m2.5",
+        ),
+        openai_transport=fake_openai_transport,
+    )
+
+    raw_output = await provider(_provider_request())
+
+    assert raw_output == '{"ok": true}'
+    assert captured == {
+        "provider": "openrouter",
+        "api_key": "sk-or-key",
+        "model": "minimax/minimax-m2.5",
+        "base_url": "https://openrouter.ai/api/v1",
+    }
+
+
 # AsyncOpenAI default transport tests (P2.9.3)
 # ---------------------------------------------------------------------------
 
@@ -565,19 +642,11 @@ def _openai_settings(
     *,
     grading_base_url: str | None = None,
 ) -> Settings:
-    kwargs: dict[str, object] = {
-        "database_url": "sqlite:///tests.db",
-        "auth_jwt_secret": "x" * 32,
-        "auth_jwt_algorithm": "HS256",
-        "auth_access_token_expire_minutes": 60,
-        "grading_provider": "openai_compatible",
-        "grading_api_key": "test-api-key",
-        "grading_model": GRADING_DEFAULT_MODEL,
-        "grading_prompt_version": GRADING_DEFAULT_PROMPT_VERSION,
-    }
-    if grading_base_url is not None:
-        kwargs["grading_base_url"] = grading_base_url
-    return Settings(**kwargs)
+    return _settings(
+        grading_provider="openai_compatible",
+        grading_api_key="test-api-key",
+        grading_base_url=grading_base_url,
+    )
 
 
 def _openai_request() -> GradingProviderRequest:

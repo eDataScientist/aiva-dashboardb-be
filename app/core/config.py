@@ -16,6 +16,7 @@ from app.core.constants import (
     GRADING_DEFAULT_MODEL,
     GRADING_METRICS_DEFAULT_WINDOW_DAYS,
     GRADING_DEFAULT_PROMPT_VERSION,
+    GRADING_OPENROUTER_BASE_URL,
     MONITORING_DEFAULT_PAGE_SIZE,
     MONITORING_DEFAULT_RECENT_HISTORY_LIMIT,
     MONITORING_DEFAULT_WINDOW_DAYS,
@@ -26,7 +27,9 @@ from app.core.constants import (
     GRADING_PROMPT_REQUIRED_FILES,
     GRADING_PROMPT_SYSTEM_PROMPT_FILE,
     GRADING_PROVIDER_MOCK,
+    GRADING_PROVIDER_OPENAI,
     GRADING_PROVIDER_OPENAI_COMPATIBLE,
+    GRADING_PROVIDER_OPENROUTER,
     GRADING_SUPPORTED_PROVIDERS,
 )
 
@@ -106,16 +109,25 @@ class Settings(BaseSettings):
         default=None,
         description="Optional API key used by external grading providers.",
     )
+    openai_api_key: str | None = Field(
+        default=None,
+        description="API key for direct OpenAI grading provider.",
+    )
+    openai_model: str | None = Field(
+        default=None,
+        description="Model to use with the direct OpenAI grading provider.",
+    )
     openrouter_api_key: str | None = Field(
         default=None,
-        description=(
-            "Optional OpenRouter API key alias used by the OpenAI-compatible "
-            "grading provider path."
-        ),
+        description="API key for the OpenRouter grading provider.",
+    )
+    openrouter_model: str | None = Field(
+        default=None,
+        description="Model to use with the OpenRouter grading provider.",
     )
     grading_base_url: str | None = Field(
         default=None,
-        description="Optional base URL override for OpenAI-compatible grading providers.",
+        description="Optional base URL override for the legacy openai_compatible provider.",
     )
     grading_batch_scheduler_enabled: bool = Field(
         default=False,
@@ -374,7 +386,14 @@ class Settings(BaseSettings):
             )
         return value
 
-    @field_validator("grading_api_key", "openrouter_api_key", "grading_base_url")
+    @field_validator(
+        "grading_api_key",
+        "openai_api_key",
+        "openai_model",
+        "openrouter_api_key",
+        "openrouter_model",
+        "grading_base_url",
+    )
     @classmethod
     def normalize_optional_grading_fields(cls, value: str | None) -> str | None:
         if value is None:
@@ -384,16 +403,42 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_grading_provider_requirements(self) -> "Settings":
-        if self.grading_api_key is None and self.openrouter_api_key is not None:
+        if self.grading_provider == GRADING_PROVIDER_OPENAI:
+            if self.openai_api_key is None:
+                raise ValueError(
+                    "OPENAI_API_KEY is required when GRADING_PROVIDER is 'openai'."
+                )
+            if self.openai_model is None:
+                raise ValueError(
+                    "OPENAI_MODEL is required when GRADING_PROVIDER is 'openai'."
+                )
+            self.grading_api_key = self.openai_api_key
+            self.grading_model = self.openai_model
+            self.grading_base_url = None
+
+        elif self.grading_provider == GRADING_PROVIDER_OPENROUTER:
+            if self.openrouter_api_key is None:
+                raise ValueError(
+                    "OPENROUTER_API_KEY is required when "
+                    "GRADING_PROVIDER is 'openrouter'."
+                )
+            if self.openrouter_model is None:
+                raise ValueError(
+                    "OPENROUTER_MODEL is required when "
+                    "GRADING_PROVIDER is 'openrouter'."
+                )
             self.grading_api_key = self.openrouter_api_key
-        if (
-            self.grading_provider == GRADING_PROVIDER_OPENAI_COMPATIBLE
-            and self.grading_api_key is None
-        ):
-            raise ValueError(
-                "GRADING_API_KEY or OPENROUTER_API_KEY is required when "
-                "GRADING_PROVIDER is 'openai_compatible'."
-            )
+            self.grading_model = self.openrouter_model
+            self.grading_base_url = GRADING_OPENROUTER_BASE_URL
+
+        elif self.grading_provider == GRADING_PROVIDER_OPENAI_COMPATIBLE:
+            if self.grading_api_key is None and self.openrouter_api_key is not None:
+                self.grading_api_key = self.openrouter_api_key
+            if self.grading_api_key is None:
+                raise ValueError(
+                    "GRADING_API_KEY or OPENROUTER_API_KEY is required when "
+                    "GRADING_PROVIDER is 'openai_compatible'."
+                )
         validate_prompt_pack_assets(
             root_dir=self.resolved_grading_prompt_assets_dir,
             version=self.grading_prompt_version,

@@ -10,7 +10,9 @@ import openai
 from app.core.config import Settings, get_settings
 from app.core.constants import (
     GRADING_PROVIDER_MOCK,
+    GRADING_PROVIDER_OPENAI,
     GRADING_PROVIDER_OPENAI_COMPATIBLE,
+    GRADING_PROVIDER_OPENROUTER,
 )
 from app.schemas.grading_prompts import PromptDomain
 from app.services.grading_prompt import PromptBundle
@@ -58,7 +60,11 @@ def build_grading_provider(
             lambda request: transport(request),
         )
 
-    if resolved_settings.grading_provider == GRADING_PROVIDER_OPENAI_COMPATIBLE:
+    if resolved_settings.grading_provider in (
+        GRADING_PROVIDER_OPENAI,
+        GRADING_PROVIDER_OPENROUTER,
+        GRADING_PROVIDER_OPENAI_COMPATIBLE,
+    ):
         transport = openai_transport or _default_openai_compatible_transport
         return _build_retrying_provider(
             lambda request: transport(request, resolved_settings),

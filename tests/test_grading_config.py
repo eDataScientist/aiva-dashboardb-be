@@ -93,6 +93,75 @@ def test_settings_allow_openrouter_api_key_for_openai_compatible_provider() -> N
     assert settings.grading_api_key == "openrouter-key"
 
 
+def test_settings_openai_provider_resolves_key_and_model() -> None:
+    settings = Settings(
+        **_base_settings(
+            grading_provider="openai",
+            openai_api_key="sk-openai-key",
+            openai_model="gpt-5.4-mini",
+        )
+    )
+
+    assert settings.grading_api_key == "sk-openai-key"
+    assert settings.grading_model == "gpt-5.4-mini"
+    assert settings.grading_base_url is None
+
+
+def test_settings_openai_provider_requires_api_key() -> None:
+    with pytest.raises(ValidationError, match="OPENAI_API_KEY"):
+        Settings(
+            **_base_settings(
+                grading_provider="openai",
+                openai_api_key="   ",
+                openai_model="gpt-5.4-mini",
+            )
+        )
+
+
+def test_settings_openai_provider_requires_model() -> None:
+    with pytest.raises(ValidationError, match="OPENAI_MODEL"):
+        Settings(
+            **_base_settings(
+                grading_provider="openai",
+                openai_api_key="sk-openai-key",
+            )
+        )
+
+
+def test_settings_openrouter_provider_resolves_key_model_and_base_url() -> None:
+    settings = Settings(
+        **_base_settings(
+            grading_provider="openrouter",
+            openrouter_api_key="sk-or-key",
+            openrouter_model="minimax/minimax-m2.5",
+        )
+    )
+
+    assert settings.grading_api_key == "sk-or-key"
+    assert settings.grading_model == "minimax/minimax-m2.5"
+    assert settings.grading_base_url == "https://openrouter.ai/api/v1"
+
+
+def test_settings_openrouter_provider_requires_api_key() -> None:
+    with pytest.raises(ValidationError, match="OPENROUTER_API_KEY"):
+        Settings(
+            **_base_settings(
+                grading_provider="openrouter",
+                openrouter_model="minimax/minimax-m2.5",
+            )
+        )
+
+
+def test_settings_openrouter_provider_requires_model() -> None:
+    with pytest.raises(ValidationError, match="OPENROUTER_MODEL"):
+        Settings(
+            **_base_settings(
+                grading_provider="openrouter",
+                openrouter_api_key="sk-or-key",
+            )
+        )
+
+
 def test_settings_reject_invalid_grading_timeout() -> None:
     with pytest.raises(ValidationError):
         Settings(**_base_settings(grading_request_timeout_seconds=0))
